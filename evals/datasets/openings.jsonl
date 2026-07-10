@@ -1,0 +1,6 @@
+{"id": "cafe-email", "channel": "email", "business_info": {"name": "Brew & Bloom Cafe", "category": "food", "description": "Specialty coffee and fresh bakes in the heart of Kolkata."}}
+{"id": "dental-whatsapp", "channel": "whatsapp", "business_info": {"name": "Sharma Dental Clinic", "category": "health", "description": "Family dental clinic in Greater Kailash, Delhi. Mon-Sat."}}
+{"id": "salon-sms", "channel": "sms", "business_info": {"name": "QuickTrim Salon", "category": "services", "description": "Unisex salon in Madhapur, Hyderabad. Walk-ins welcome."}}
+{"id": "hotel-email", "channel": "email", "business_info": {"name": "Oceanview Hotel", "category": "hospitality", "description": "Boutique 40-room beach hotel on Candolim Beach Road, Goa."}}
+{"id": "hardware-whatsapp", "channel": "whatsapp", "business_info": {"name": "Patel Hardware Stores", "category": "retail", "description": "Hardware, paints and sanitaryware on Relief Road, Ahmedabad."}}
+{"id": "no-description-email", "channel": "email", "business_info": {"name": "Green Leaf Organics", "category": "retail"}}

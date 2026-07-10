@@ -1,0 +1,55 @@
+[project]
+name = "scopio"
+version = "0.1.0"
+description = "Scopio — AI Sales Outreach Platform (Phase 1: Discovery)"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.111",
+    "uvicorn[standard]>=0.30",
+    "sqlalchemy[asyncio]>=2.0.30",
+    "asyncpg>=0.29",
+    "pydantic>=2.7",
+    "pydantic-settings>=2.3",
+    "httpx>=0.27",
+    "arq>=0.26",
+    "redis>=5.0",
+    "python-slugify>=8.0",
+    "pygeohash>=1.2",
+    "python-multipart>=0.0.9",
+    "anthropic>=0.40",
+    "tzdata>=2024.1",
+    "aiosmtplib>=3.0",
+    "phonenumbers>=8.13",
+    "langgraph>=0.2",
+    "tavily-python>=0.5",
+    "langfuse>=3.0",
+    "cryptography>=42",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.2",
+    "pytest-asyncio>=0.23",
+    "anyio>=4.4",
+    "ruff>=0.6",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+# Colab/Jupyter notebooks are training artifacts, not app code: their imports
+# intentionally follow `!pip install` and shell cells, so import-order lint rules
+# (I001/E402) are false-positive noise there.
+extend-exclude = ["*.ipynb"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+# E501: long lines tolerated; B008: FastAPI Depends() in defaults is the intended pattern.
+ignore = ["E501", "B008"]
+
+[tool.setuptools.packages.find]
+include = ["app*"]

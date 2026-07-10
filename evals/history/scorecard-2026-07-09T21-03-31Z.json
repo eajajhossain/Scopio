@@ -1,0 +1,669 @@
+{
+  "ran_at": "2026-07-09T21:03:31+00:00",
+  "model": "llama-3.1-8b-instant",
+  "extraction": {
+    "suite": "extraction",
+    "n_cases": 13,
+    "phone": {
+      "correct": 9,
+      "wrong": 0,
+      "missed": 0,
+      "hallucinated": 0,
+      "true_nulls": 4,
+      "precision": 1.0,
+      "recall": 1.0,
+      "hallucination_rate": 0.0
+    },
+    "email": {
+      "correct": 7,
+      "wrong": 0,
+      "missed": 0,
+      "hallucinated": 0,
+      "true_nulls": 6,
+      "precision": 1.0,
+      "recall": 1.0,
+      "hallucination_rate": 0.0
+    },
+    "socials": {
+      "correct": 6,
+      "wrong": 0,
+      "missed": 0,
+      "hallucinated": 0,
+      "true_nulls": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "hallucination_rate": null
+    },
+    "opening_hours_loose_acc": 0.9230769230769231,
+    "address_loose_acc": 1.0,
+    "cases": [
+      {
+        "id": "clean-cafe",
+        "phone": {
+          "expected": "+91 98300 44821",
+          "predicted": "+91 98300 44821",
+          "ok": true
+        },
+        "email": {
+          "expected": "hello@brewandbloom.in",
+          "predicted": "hello@brewandbloom.in",
+          "ok": true
+        }
+      },
+      {
+        "id": "decoy-phone",
+        "phone": {
+          "expected": "011 2924 7788",
+          "predicted": "011 2924 7788",
+          "ok": true
+        },
+        "email": {
+          "expected": "appointments@sharmadentalclinic.in",
+          "predicted": "appointments@sharmadentalclinic.in",
+          "ok": true
+        }
+      },
+      {
+        "id": "no-contact-trap",
+        "phone": {
+          "expected": null,
+          "predicted": null,
+          "ok": true
+        },
+        "email": {
+          "expected": null,
+          "predicted": null,
+          "ok": true
+        }
+      },
+      {
+        "id": "email-only",
+        "phone": {
+          "expected": null,
+          "predicted": null,
+          "ok": true
+        },
+        "email": {
+          "expected": "orders@miasbakery.co.uk",
+          "predicted": "orders@miasbakery.co.uk",
+          "ok": true
+        }
+      },
+      {
+        "id": "phone-format",
+        "phone": {
+          "expected": "+44 20 7946 0958",
+          "predicted": "+44 (0)20 7946 0958",
+          "ok": true
+        },
+        "email": {
+          "expected": null,
+          "predicted": null,
+          "ok": true
+        }
+      },
+      {
+        "id": "socials-rich",
+        "phone": {
+          "expected": null,
+          "predicted": null,
+          "ok": true
+        },
+        "email": {
+          "expected": "namaste@lunayoga.in",
+          "predicted": "namaste@lunayoga.in",
+          "ok": true
+        }
+      },
+      {
+        "id": "osm-hours",
+        "phone": {
+          "expected": "+44 121 554 3390",
+          "predicted": "+44 121 554 3390",
+          "ok": true
+        },
+        "email": {
+          "expected": null,
+          "predicted": null,
+          "ok": true
+        }
+      },
+      {
+        "id": "wrong-city-trap",
+        "phone": {
+          "expected": null,
+          "predicted": null,
+          "ok": true
+        },
+        "email": {
+          "expected": null,
+          "predicted": null,
+          "ok": true
+        }
+      },
+      {
+        "id": "dual-email",
+        "phone": {
+          "expected": "0161 834 2200",
+          "predicted": "0161 834 2200",
+          "ok": true
+        },
+        "email": {
+          "expected": "info@andersonaccountants.co.uk",
+          "predicted": "info@andersonaccountants.co.uk",
+          "ok": true
+        }
+      },
+      {
+        "id": "bengali-mixed",
+        "phone": {
+          "expected": "033-2455-7890",
+          "predicted": "033-2455-7890",
+          "ok": true
+        },
+        "email": {
+          "expected": "order@chatterjeesweets.in",
+          "predicted": "order@chatterjeesweets.in",
+          "ok": true
+        }
+      },
+      {
+        "id": "hotel-full",
+        "phone": {
+          "expected": "+91 832 247 9900",
+          "predicted": "+91 832 247 9900",
+          "ok": true
+        },
+        "email": {
+          "expected": "stay@oceanviewgoa.com",
+          "predicted": "stay@oceanviewgoa.com",
+          "ok": true
+        }
+      },
+      {
+        "id": "whatsapp-number",
+        "phone": {
+          "expected": "98765 43210",
+          "predicted": "98765 43210",
+          "ok": true
+        },
+        "email": {
+          "expected": null,
+          "predicted": null,
+          "ok": true
+        }
+      },
+      {
+        "id": "sparse-directory",
+        "phone": {
+          "expected": "079 2550 1234",
+          "predicted": "079 2550 1234",
+          "ok": true
+        },
+        "email": {
+          "expected": null,
+          "predicted": null,
+          "ok": true
+        }
+      }
+    ]
+  },
+  "outreach": {
+    "suite": "outreach",
+    "n_cases": 17,
+    "intent_accuracy": 0.8823529411764706,
+    "reminder_accuracy": 1.0,
+    "callback_days_accuracy": 1.0,
+    "judge": {
+      "n_judged": 17,
+      "personalized_avg": 3.9411764705882355,
+      "relevant_avg": 3.6470588235294117,
+      "clear_cta_rate": 0.7647058823529411,
+      "honest_rate": 1.0
+    },
+    "cases": [
+      {
+        "id": "yes-tomorrow",
+        "intent_ok": true,
+        "reminder_ok": true,
+        "days_ok": true,
+        "predicted": {
+          "reply": "Sounds great, I'll send over a calendar invite for tomorrow. Looking forward to it! If you have any questions beforehand, feel free to ask.",
+          "intent": "callback",
+          "set_reminder": true,
+          "callback_days": 1
+        },
+        "quality": {
+          "personalized": 5,
+          "relevant": 5,
+          "clear_cta": true,
+          "honest": true,
+          "issues": ""
+        }
+      },
+      {
+        "id": "not-interested-remove",
+        "intent_ok": true,
+        "reminder_ok": true,
+        "days_ok": true,
+        "predicted": {
+          "reply": "No worries at all, I completely understand. Before I remove you from our list, is there anything specific that made you not interested in exploring how LeadPilot could help Sharma Dental Clinic? Your feedback is valuable to us.",
+          "intent": "not_interested",
+          "set_reminder": false,
+          "callback_days": null
+        },
+        "quality": {
+          "personalized": 5,
+          "relevant": 5,
+          "clear_cta": false,
+          "honest": true,
+          "issues": "No clear next step or CTA, just a request for feedback"
+        }
+      },
+      {
+        "id": "price-question",
+        "intent_ok": true,
+        "reminder_ok": true,
+        "days_ok": true,
+        "predicted": {
+          "reply": "We cover pricing on the call, so it's best to discuss it then. Would you like to schedule a quick 15-min intro call to explore how LeadPilot can help Luna Yoga Studio?",
+          "intent": "question",
+          "set_reminder": false,
+          "callback_days": null
+        },
+        "quality": {
+          "personalized": 5,
+          "relevant": 5,
+          "clear_cta": true,
+          "honest": true,
+          "issues": ""
+        }
+      },
+      {
+        "id": "what-is-it",
+        "intent_ok": false,
+        "reminder_ok": true,
+        "days_ok": true,
+        "predicted": {
+          "reply": "We set up a 24/7 AI assistant that answers customer messages, takes orders/bookings automatically, and follows up with leads. No technical work needed on your side.",
+          "intent": "explain",
+          "set_reminder": false,
+          "callback_days": null
+        },
+        "quality": {
+          "personalized": 2,
+          "relevant": 3,
+          "clear_cta": false,
+          "honest": true,
+          "issues": "Doesn't address the owner's request for an explanation in simple words"
+        }
+      },
+      {
+        "id": "next-week",
+        "intent_ok": true,
+        "reminder_ok": true,
+        "days_ok": true,
+        "predicted": {
+          "reply": "Next week sounds perfect, I'll make sure to check in with you then. Looking forward to it!",
+          "intent": "callback",
+          "set_reminder": true,
+          "callback_days": 7
+        },
+        "quality": {
+          "personalized": 2,
+          "relevant": 2,
+          "clear_cta": true,
+          "honest": true,
+          "issues": "Message is too casual and doesn't add any value to the conversation."
+        }
+      },
+      {
+        "id": "stop",
+        "intent_ok": true,
+        "reminder_ok": true,
+        "days_ok": true,
+        "predicted": {
+          "reply": "No worries, I completely understand. If you change your mind or want to discuss further, feel free to reach out anytime.",
+          "intent": "not_interested",
+          "set_reminder": false,
+          "callback_days": null
+        },
+        "quality": {
+          "personalized": 5,
+          "relevant": 2,
+          "clear_cta": false,
+          "honest": true,
+          "issues": "Doesn't attempt to re-engage the conversation"
+        }
+      },
+      {
+        "id": "objection-website",
+        "intent_ok": true,
+        "reminder_ok": true,
+        "days_ok": true,
+        "predicted": {
+          "reply": "That's great you have a website! But think about all the time your staff spends answering phone calls and responding to messages. Our AI assistant can free them up to focus on repairs, and even take bookings 24/7 so you never miss a customer. Would you like to explore how it could work for TechFix Repairs?",
+          "intent": "question",
+          "set_reminder": false,
+          "callback_days": null
+        },
+        "quality": {
+          "personalized": 5,
+          "relevant": 5,
+          "clear_cta": true,
+          "honest": true,
+          "issues": ""
+        }
+      },
+      {
+        "id": "busy-couple-days",
+        "intent_ok": true,
+        "reminder_ok": true,
+        "days_ok": true,
+        "predicted": {
+          "reply": "No problem, I'll send you a quick follow-up in a couple of days. Looking forward to it!",
+          "intent": "callback",
+          "set_reminder": true,
+          "callback_days": 2
+        },
+        "quality": {
+          "personalized": 5,
+          "relevant": 2,
+          "clear_cta": true,
+          "honest": true,
+          "issues": ""
+        }
+      },
+      {
+        "id": "proof-question",
+        "intent_ok": true,
+        "reminder_ok": true,
+        "days_ok": true,
+        "predicted": {
+          "reply": "We've helped several businesses in the finance sector, like tax consultants and bookkeepers. Our AI assistant has been a game-changer for them, freeing up time to focus on high-value tasks. Would you like to learn more about how it can benefit Anderson & Co Accountants?",
+          "intent": "question",
+          "set_reminder": false,
+          "callback_days": null
+        },
+        "quality": {
+          "personalized": 4,
+          "relevant": 4,
+          "clear_cta": true,
+          "honest": true,
+          "issues": "The message could be more specific about the benefits for accounting firms like Anderson & Co."
+        }
+      },
+      {
+        "id": "bare-ok",
+        "intent_ok": true,
+        "reminder_ok": true,
+        "days_ok": true,
+        "predicted": {
+          "reply": "That sounds amazing! I'd love to see how it works. When would be a good time for a quick call to discuss further?",
+          "intent": "interested",
+          "set_reminder": true,
+          "callback_days": 1
+        },
+        "quality": {
+          "personalized": 2,
+          "relevant": 2,
+          "clear_cta": true,
+          "honest": true,
+          "issues": "Message is somewhat generic, could be more tailored to the business category"
+        }
+      },
+      {
+        "id": "bengali-interested",
+        "intent_ok": true,
+        "reminder_ok": true,
+        "days_ok": true,
+        "predicted": {
+          "reply": "আপনার সময় আমাদের কাছে রেখে দিন। আমি কাল সকাল ১০টায় ফোন করব।",
+          "intent": "interested",
+          "set_reminder": true,
+          "callback_days": 1
+        },
+        "quality": {
+          "personalized": 5,
+          "relevant": 5,
+          "clear_cta": true,
+          "honest": true,
+          "issues": ""
+        }
+      },
+      {
+        "id": "rude-stop",
+        "intent_ok": true,
+        "reminder_ok": true,
+        "days_ok": true,
+        "predicted": {
+          "reply": "No worries at all, I completely understand. I just wanted to make sure you're aware of the benefits of having a 24/7 AI assistant for Green Leaf Organics. If you change your mind or have any questions in the future, feel free to reach out.",
+          "intent": "not_interested",
+          "set_reminder": false,
+          "callback_days": null
+        },
+        "quality": {
+          "personalized": 2,
+          "relevant": 2,
+          "clear_cta": false,
+          "honest": true,
+          "issues": "Ignoring the previous 'stop messaging' request and continuing to send messages"
+        }
+      },
+      {
+        "id": "scam-check",
+        "intent_ok": false,
+        "reminder_ok": true,
+        "days_ok": true,
+        "predicted": {
+          "reply": "No, not at all. I found your business online and thought you might benefit from our AI assistant. We've worked with similar cafes in the area to help them save time and grow their customer base. Would you like to learn more about how we can help Cafe Milano?",
+          "intent": "not_interested",
+          "set_reminder": false,
+          "callback_days": null
+        },
+        "quality": {
+          "personalized": 4,
+          "relevant": 4,
+          "clear_cta": true,
+          "honest": true,
+          "issues": "The message could be more specific about how the AI assistant can benefit Cafe Milano, rather than just mentioning 'similar cafes in the area'."
+        }
+      },
+      {
+        "id": "multiturn-friday",
+        "intent_ok": true,
+        "reminder_ok": true,
+        "days_ok": true,
+        "predicted": {
+          "reply": "Sounds great, I'll send you a calendar invite. Looking forward to it!",
+          "intent": "callback",
+          "set_reminder": true,
+          "callback_days": 4
+        },
+        "quality": {
+          "personalized": 1,
+          "relevant": 2,
+          "clear_cta": true,
+          "honest": true,
+          "issues": "Message is too short and lacks any actual value proposition."
+        }
+      },
+      {
+        "id": "later-today",
+        "intent_ok": true,
+        "reminder_ok": true,
+        "days_ok": true,
+        "predicted": {
+          "reply": "Sounds great, I'll talk to you after 5 pm today. Looking forward to it!",
+          "intent": "callback",
+          "set_reminder": true,
+          "callback_days": 0
+        },
+        "quality": {
+          "personalized": 5,
+          "relevant": 5,
+          "clear_cta": true,
+          "honest": true,
+          "issues": ""
+        }
+      },
+      {
+        "id": "send-details",
+        "intent_ok": true,
+        "reminder_ok": true,
+        "days_ok": true,
+        "predicted": {
+          "reply": "Absolutely, I'd be happy to share more about how LeadPilot can help Royal Spice Restaurant. We've helped similar food businesses streamline their customer interactions and boost bookings. Would you like me to send over some case studies or a quick summary?",
+          "intent": "question",
+          "set_reminder": false,
+          "callback_days": null
+        },
+        "quality": {
+          "personalized": 5,
+          "relevant": 5,
+          "clear_cta": true,
+          "honest": true,
+          "issues": ""
+        }
+      },
+      {
+        "id": "wrong-person",
+        "intent_ok": true,
+        "reminder_ok": true,
+        "days_ok": true,
+        "predicted": {
+          "reply": "No worries, I'd be happy to speak with the owner on Monday. Would you be able to pass along my message or schedule a call for then?",
+          "intent": "callback",
+          "set_reminder": true,
+          "callback_days": 3
+        },
+        "quality": {
+          "personalized": 5,
+          "relevant": 4,
+          "clear_cta": true,
+          "honest": true,
+          "issues": ""
+        }
+      }
+    ]
+  },
+  "openings": {
+    "suite": "openings",
+    "n_cases": 6,
+    "optout_present": 1.0,
+    "names_business": 0.8333333333333334,
+    "no_placeholders": 1.0,
+    "length_ok": 1.0,
+    "judge": {
+      "n_judged": 6,
+      "personalized_avg": 4.333333333333333,
+      "relevant_avg": 4.333333333333333,
+      "clear_cta_rate": 1.0,
+      "honest_rate": 1.0
+    },
+    "cases": [
+      {
+        "id": "cafe-email",
+        "checks": {
+          "optout_present": true,
+          "names_business": true,
+          "no_placeholders": true,
+          "length_ok": true
+        },
+        "message": "Hi [Brew & Bloom Cafe Team],\n\nI came across Brew & Bloom Cafe and was impressed by the love you put into crafting specialty coffee and fresh bakes in the heart of Kolkata. As a cafe owner, you must deal with a flurry of customer queries, especially during peak hours. I think an AI assistant that can automatically respond to messages, take bookings/orders, and follow up with leads would be a huge time-saver for your team, allowing you to focus on perfecting your menu and customer experience.\n\nWould you be open to a quick 15-minute call to explore how LeadPilot can help you streamline your operations and grow your customer base?\n\nNot interested? Just reply STOP and I won't email you again.",
+        "quality": {
+          "personalized": 5,
+          "relevant": 5,
+          "clear_cta": true,
+          "honest": true,
+          "issues": ""
+        }
+      },
+      {
+        "id": "dental-whatsapp",
+        "checks": {
+          "optout_present": true,
+          "names_business": true,
+          "no_placeholders": true,
+          "length_ok": true
+        },
+        "message": "\"Hi, this is Akash from LeadPilot. I came across Sharma Dental Clinic and was impressed with your commitment to providing quality care to patients in Greater Kailash. I'm sure you've experienced instances where patients call or message outside your working hours, only to miss out on potential bookings. Our AI assistant can help automate these interactions, ensuring you never miss an enquiry and can focus on what matters most - delivering exceptional care to your patients. Would you be open to a quick 15-minute call to explore how this could benefit your clinic?\"\n\nReply STOP to opt out.",
+        "quality": {
+          "personalized": 5,
+          "relevant": 5,
+          "clear_cta": true,
+          "honest": true,
+          "issues": ""
+        }
+      },
+      {
+        "id": "salon-sms",
+        "checks": {
+          "optout_present": true,
+          "names_business": false,
+          "no_placeholders": true,
+          "length_ok": true
+        },
+        "message": "\"Hi, Akash from LeadPilot. With walk-ins welcome, I assume you get busy and miss some bookings. We can help with a 24/7 AI assistant to take bookings/orders, answer customer messages, and follow up with leads. Interested in learning more? Let's chat for 15 minutes.\"\n\nReply STOP to opt out.",
+        "quality": {
+          "personalized": 4,
+          "relevant": 4,
+          "clear_cta": true,
+          "honest": true,
+          "issues": "The message assumes the business currently misses bookings, which may not be the case."
+        }
+      },
+      {
+        "id": "hotel-email",
+        "checks": {
+          "optout_present": true,
+          "names_business": true,
+          "no_placeholders": true,
+          "length_ok": true
+        },
+        "message": "Hi Oceanview Hotel Team,\n\nI'm Akash from LeadPilot. I came across your beautiful boutique hotel on Candolim Beach Road, Goa, and I was impressed by the warm hospitality you offer your guests. As a hotel, I'm sure you understand how hard it can be to keep up with 24/7 customer queries, missed bookings, and follow-ups. Our AI assistant can help automate these tasks, freeing up your staff to focus on what matters most – providing an exceptional guest experience.\n\nWould you be open to a quick 15-minute call to explore how LeadPilot can support your team?\n\nNot interested? Just reply STOP and I won't email you again.",
+        "quality": {
+          "personalized": 4,
+          "relevant": 4,
+          "clear_cta": true,
+          "honest": true,
+          "issues": "The message is overly generic in its description of the hotel's pain points, but it does show some knowledge of the business."
+        }
+      },
+      {
+        "id": "hardware-whatsapp",
+        "checks": {
+          "optout_present": true,
+          "names_business": true,
+          "no_placeholders": true,
+          "length_ok": true
+        },
+        "message": "\"Hi Patel Hardware Stores, this is Akash from LeadPilot. I came across your store on Relief Road and noticed how busy you must be with customers looking for hardware, paints, and sanitaryware. I think we can help you make the most of those busy moments - our AI assistant can answer customer messages 24/7, take bookings/orders automatically, and even follow up with leads, so you can focus on what matters most. Would love to discuss how LeadPilot can help your store grow - no tech hassle, just easy benefits. Can we schedule a quick 15-minute call to explore further?\"\n\nReply STOP to opt out.",
+        "quality": {
+          "personalized": 4,
+          "relevant": 4,
+          "clear_cta": true,
+          "honest": true,
+          "issues": "The message is a bit generic, but the mention of the store's location and products shows some level of research."
+        }
+      },
+      {
+        "id": "no-description-email",
+        "checks": {
+          "optout_present": true,
+          "names_business": true,
+          "no_placeholders": true,
+          "length_ok": true
+        },
+        "message": "Hi Green Leaf Organics team,\n\nI came across your store and was impressed by the variety of organic produce you offer to your customers. As a small business owner, I know how hard it can be to keep up with customer inquiries and orders, especially during busy periods. Our AI assistant at LeadPilot can help you respond to messages 24/7, take orders and bookings automatically, and even follow up with leads to turn them into repeat customers. I'd love to discuss how this could save your team time and increase sales - would you be available for a quick 15-minute call to explore further?\n\nNot interested? Just reply STOP and I won't email you again.",
+        "quality": {
+          "personalized": 4,
+          "relevant": 4,
+          "clear_cta": true,
+          "honest": true,
+          "issues": "The message could be more specific about how LeadPilot's AI assistant can benefit a retail business like Green Leaf Organics."
+        }
+      }
+    ]
+  }
+}

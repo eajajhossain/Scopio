@@ -1,0 +1,40 @@
+# Production overrides:  docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+# Differences from dev: no code mounts, no --reload, multiple API workers, restart policy,
+# production env, and Postgres credentials/secret taken from the environment (.env).
+services:
+  db:
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: scopio
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+      POSTGRES_DB: scopio
+    # Don't expose the DB port publicly in production.
+    ports: []
+
+  redis:
+    restart: unless-stopped
+    ports: []
+
+  api:
+    restart: unless-stopped
+    environment:
+      ENVIRONMENT: production
+      SECRET_KEY: ${SECRET_KEY:?set SECRET_KEY}
+      # app_rls is a deliberately limited NOSUPERUSER role and the DB port is not
+      # published in prod (see db.ports: [] above), so its password is not an
+      # externally reachable secret — kept fixed to match db/init.sql. The secrets
+      # that matter (SECRET_KEY, the scopio superuser POSTGRES_PASSWORD) are env-driven.
+      DATABASE_URL: postgresql+asyncpg://app_rls:app_rls@db:5432/scopio
+      # Admin dashboard reads via the scopio superuser — must use the prod password.
+      ADMIN_DATABASE_URL: postgresql+asyncpg://scopio:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}@db:5432/scopio
+      CORS_ORIGINS: ${CORS_ORIGINS:-}
+    volumes: []   # no source mount in prod (use the built image)
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 4
+
+  worker:
+    restart: unless-stopped
+    environment:
+      ENVIRONMENT: production
+      SECRET_KEY: ${SECRET_KEY:?set SECRET_KEY}
+      DATABASE_URL: postgresql+asyncpg://app_rls:app_rls@db:5432/scopio
+    volumes: []

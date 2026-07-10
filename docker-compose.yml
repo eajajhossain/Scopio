@@ -1,0 +1,116 @@
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: scopio
+      POSTGRES_PASSWORD: scopio
+      POSTGRES_DB: scopio
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      # init.sql runs automatically on first boot (enums, tables, RLS, dev seed)
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U scopio"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # Web UI to browse the whole database (all tables + rows). Dev-only convenience —
+  # connects as the superuser 'scopio', so it bypasses RLS and shows every tenant's data.
+  # Open http://localhost:8080  (System: PostgreSQL · Server: db · User/Pass: scopio · DB: scopio)
+  adminer:
+    image: adminer:4
+    ports:
+      - "8080:8080"
+    environment:
+      ADMINER_DEFAULT_SERVER: db
+      ADMINER_DESIGN: dracula
+    depends_on:
+      - db
+
+  api:
+    build: .
+    environment:
+      # App connects as the non-superuser app_rls role so RLS is enforced.
+      DATABASE_URL: postgresql+asyncpg://app_rls:app_rls@db:5432/scopio
+      # Privileged read connection for the admin dashboard (superuser → sees all tenants).
+      ADMIN_DATABASE_URL: postgresql+asyncpg://scopio:scopio@db:5432/scopio
+      # Emails allowed into the admin dashboard (comma-separated).
+      ADMIN_EMAILS: ${ADMIN_EMAILS:-}
+      REDIS_URL: redis://redis:6379/0
+      # Optional AI keys (set in .env). Priority: Claude > Groq (free) > regex.
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
+      # Optional: free Brave Search key for reliable website discovery.
+      BRAVE_API_KEY: ${BRAVE_API_KEY:-}
+      # Optional: free Geoapify key (2nd discovery source, no card).
+      GEOAPIFY_API_KEY: ${GEOAPIFY_API_KEY:-}
+      # Deep research agent web search (key arrives later; falls back to website-read without it).
+      TAVILY_API_KEY: ${TAVILY_API_KEY:-}
+      # Optional Langfuse observability (traces every LLM call + agent run; no-op without keys).
+      LANGFUSE_PUBLIC_KEY: ${LANGFUSE_PUBLIC_KEY:-}
+      LANGFUSE_SECRET_KEY: ${LANGFUSE_SECRET_KEY:-}
+      LANGFUSE_HOST: ${LANGFUSE_HOST:-https://cloud.langfuse.com}
+      # Enrichment/research LLM endpoint/model (cloud Groq by default).
+      LLM_BASE_URL: ${LLM_BASE_URL:-https://api.groq.com/openai/v1}
+      LLM_MODEL: ${LLM_MODEL:-llama-3.3-70b-versatile}
+      LLM_TIMEOUT: ${LLM_TIMEOUT:-40}
+      ENRICHMENT_MAX_BUSINESSES: ${ENRICHMENT_MAX_BUSINESSES:-25}
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./app:/code/app   # hot-reload dev mount
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+  worker:
+    build: .
+    environment:
+      # App connects as the non-superuser app_rls role so RLS is enforced.
+      DATABASE_URL: postgresql+asyncpg://app_rls:app_rls@db:5432/scopio
+      REDIS_URL: redis://redis:6379/0
+      # Optional AI keys (set in .env). Priority: Claude > Groq (free) > regex.
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
+      # Optional: free Brave Search key for reliable website discovery.
+      BRAVE_API_KEY: ${BRAVE_API_KEY:-}
+      # Optional: free Geoapify key (2nd discovery source, no card).
+      GEOAPIFY_API_KEY: ${GEOAPIFY_API_KEY:-}
+      # Deep research agent web search (key arrives later; falls back to website-read without it).
+      TAVILY_API_KEY: ${TAVILY_API_KEY:-}
+      # Optional Langfuse observability (traces every LLM call + agent run; no-op without keys).
+      LANGFUSE_PUBLIC_KEY: ${LANGFUSE_PUBLIC_KEY:-}
+      LANGFUSE_SECRET_KEY: ${LANGFUSE_SECRET_KEY:-}
+      LANGFUSE_HOST: ${LANGFUSE_HOST:-https://cloud.langfuse.com}
+      # Enrichment/research LLM endpoint/model (cloud Groq by default).
+      LLM_BASE_URL: ${LLM_BASE_URL:-https://api.groq.com/openai/v1}
+      LLM_MODEL: ${LLM_MODEL:-llama-3.3-70b-versatile}
+      LLM_TIMEOUT: ${LLM_TIMEOUT:-40}
+      ENRICHMENT_MAX_BUSINESSES: ${ENRICHMENT_MAX_BUSINESSES:-25}
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./app:/code/app
+    command: arq app.workers.discovery_worker.WorkerSettings
+
+volumes:
+  pgdata:

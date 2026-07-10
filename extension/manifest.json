@@ -1,0 +1,13 @@
+{
+  "manifest_version": 3,
+  "name": "Scopio Lead Finder",
+  "version": "0.1.0",
+  "description": "Find local business leads (free, via your Scopio account) right from your browser toolbar.",
+  "permissions": ["storage"],
+  "optional_host_permissions": ["http://*/*", "https://*/*"],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Scopio Lead Finder"
+  },
+  "options_page": "options.html"
+}

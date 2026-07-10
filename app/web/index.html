@@ -1,0 +1,1527 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Scopio — Discovery</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>
+    :root {
+      --bg: #0a0c11; --bg-2: #0e1116; --panel: #13161d; --glass: rgba(17,20,27,.82);
+      --line: #232732; --line-2: #2e3340; --text: #e7e9ef; --muted: #8b93a3;
+      --accent: #5b7cfa; --accent-2: #7c93fb; --accent2: #34c88d; --warn: #e6b23e;
+      --grad: linear-gradient(135deg, #5b7cfa, #7c93fb);
+      --shadow: 0 1px 2px rgba(0,0,0,.4);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility;
+      font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg); color: var(--text); height: 100vh; display: flex; flex-direction: column;
+      font-size: 14px; letter-spacing: -0.005em;
+    }
+    header {
+      padding: 14px 20px; border-bottom: 1px solid var(--line);
+      display: flex; align-items: baseline; gap: 12px;
+    }
+    header h1 { font-size: 20px; margin: 0; letter-spacing: .5px; }
+    header span { color: var(--muted); font-size: 13px; }
+    .layout { flex: 1; display: grid; grid-template-columns: 420px 1fr; min-height: 0; }
+    .sidebar { border-right: 1px solid var(--line); display: flex; flex-direction: column; min-height: 0; }
+    form { padding: 16px 20px; border-bottom: 1px solid var(--line); }
+    label { display: block; font-size: 12px; color: var(--muted); margin: 10px 0 4px; }
+    input, select {
+      width: 100%; padding: 9px 10px; background: var(--panel); border: 1px solid var(--line);
+      border-radius: 8px; color: var(--text); font-size: 14px;
+    }
+    .row { display: flex; gap: 10px; }
+    .row > div { flex: 1; }
+    button {
+      margin-top: 14px; width: 100%; padding: 10px; background: var(--accent); color: #082f49;
+      border: none; border-radius: 8px; font-weight: 700; font-size: 14px; cursor: pointer;
+    }
+    button:disabled { opacity: .5; cursor: not-allowed; }
+    button.ghost { background: transparent; color: var(--accent); border: 1px solid var(--line); font-weight: 600; }
+    #status { padding: 10px 20px; font-size: 13px; color: var(--muted); border-bottom: 1px solid var(--line); min-height: 20px; }
+    #status b { color: var(--accent); }
+    .list { overflow-y: auto; flex: 1; min-height: 0; }
+    .biz { padding: 12px 20px; border-bottom: 1px solid var(--line); cursor: pointer; }
+    .biz:hover { background: #18243b; }
+    .biz .name { font-weight: 600; }
+    .biz .meta { font-size: 12px; color: var(--muted); margin-top: 3px; }
+    .tag { display: inline-block; font-size: 10px; text-transform: uppercase; letter-spacing: .5px;
+      padding: 2px 7px; border-radius: 99px; background: #0c4a6e; color: var(--accent); margin-right: 6px; }
+    .nocontact { background: #422006; color: var(--warn); }
+    .hascontact { background: #052e16; color: var(--accent2); }
+    .enriched { background: #2e1065; color: #c4b5fd; }
+    .booked { background: #064e3b; color: #6ee7b7; }
+    .bookbtn { width: auto; margin-top: 8px; padding: 5px 10px; font-size: 12px; }
+    .biz .row2 { display: flex; gap: 10px; }
+    .thumb { width: 44px; height: 44px; border-radius: 8px; object-fit: cover;
+      background: #0c1726; flex-shrink: 0; }
+    .meta a { color: var(--accent); text-decoration: none; }
+    header button { width: auto; margin: 0; padding: 8px 14px; font-size: 13px; }
+    /* Reminders panel */
+    #remindersPanel { position: fixed; inset: 0; background: rgba(2,6,23,.7);
+      display: none; align-items: center; justify-content: center; z-index: 1000; }
+    #remindersPanel .card { background: var(--panel); border: 1px solid var(--line);
+      border-radius: 12px; width: min(640px, 92vw); max-height: 80vh; overflow-y: auto; padding: 20px; }
+    #remindersPanel h2 { margin: 0 0 12px; font-size: 18px; }
+    .mtg { border: 1px solid var(--line); border-radius: 8px; padding: 12px; margin-bottom: 10px;
+      border-left: 3px solid var(--accent); }
+    .mtg .when { font-weight: 600; }
+    .mtg.done { opacity: .5; border-left-color: var(--accent2); }
+    .mtg.overdue { border-left-color: var(--warn); }
+    .due-tag { display: inline-block; font-size: 11px; font-weight: 700; padding: 1px 7px;
+      border-radius: 99px; margin-left: 6px; }
+    .due-tag.over { background: #4a1d1d; color: var(--warn); }
+    .due-tag.soon { background: #0c4a6e; color: var(--accent); }
+    .closebtn { float: right; width: auto; background: transparent; color: var(--muted);
+      border: 1px solid var(--line); padding: 4px 10px; }
+    .cancelbtn { width: auto; background: transparent; color: var(--warn);
+      border: 1px solid var(--line); padding: 4px 10px; font-size: 12px; margin-top: 6px; }
+    .donebtn { width: auto; background: transparent; color: var(--accent2);
+      border: 1px solid var(--line); padding: 4px 10px; font-size: 12px; margin-top: 6px; margin-right: 6px; }
+    /* Chat panel */
+    #chatPanel { position: fixed; inset: 0; background: rgba(2,6,23,.7);
+      display: none; align-items: center; justify-content: center; z-index: 1000; }
+    #chatPanel .card { background: var(--panel); border: 1px solid var(--line);
+      border-radius: 12px; width: min(560px, 94vw); height: 80vh; display: flex;
+      flex-direction: column; padding: 16px; }
+    #chatLog { flex: 1; overflow-y: auto; margin: 12px 0; display: flex; flex-direction: column; gap: 8px; }
+    .bubble { max-width: 80%; padding: 9px 12px; border-radius: 12px; font-size: 14px; white-space: pre-wrap; }
+    .bubble.ai { align-self: flex-start; background: #0c4a6e; color: #e0f2fe; border-bottom-left-radius: 3px; }
+    .bubble.them { align-self: flex-end; background: #334155; color: var(--text); border-bottom-right-radius: 3px; }
+    .chatbanner { background: #064e3b; color: #6ee7b7; padding: 8px 12px; border-radius: 8px; font-size: 13px; text-align: center; }
+    .chatinput { display: flex; gap: 8px; }
+    .chatinput input { flex: 1; }
+    .chatinput button { width: auto; padding: 9px 16px; }
+    .reachbtn { width: auto; margin: 8px 0 0 8px; padding: 5px 10px; font-size: 12px; }
+    .sendbtn { width: auto; margin: 8px 0 0 8px; padding: 5px 10px; font-size: 12px;
+      border-color: var(--accent2); color: var(--accent2); }
+    /* Auth gate */
+    #authPanel { position: fixed; inset: 0; background: var(--bg); z-index: 2000;
+      display: flex; align-items: center; justify-content: center; }
+    #authPanel .card { background: var(--panel); border: 1px solid var(--line);
+      border-radius: 14px; width: min(440px, 94vw); padding: 28px; }
+    #authPanel h2 { margin: 0 0 4px; }
+    #authPanel .sub { color: var(--muted); font-size: 13px; margin-bottom: 16px; }
+    #authPanel textarea { width: 100%; padding: 9px 10px; background: var(--bg);
+      border: 1px solid var(--line); border-radius: 8px; color: var(--text); font: inherit; resize: vertical; }
+    #authPanel .err { color: #fca5a5; font-size: 13px; min-height: 16px; margin-top: 6px; }
+    .authtoggle { color: var(--accent); cursor: pointer; }
+    .userbox { margin-left: auto; display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--muted); }
+    .userbox button { width: auto; padding: 6px 12px; }
+    header .userbox + button { margin-left: 12px; }
+    #map { height: 100%; }
+    .importbar { padding: 12px 20px; border-bottom: 1px solid var(--line); font-size: 13px; }
+    .importbar input[type=file] { margin-top: 6px; font-size: 12px; }
+    .count { color: var(--accent2); font-weight: 700; }
+
+    /* ===================== Modern redesign ===================== */
+    body {
+      background:
+        radial-gradient(1100px 560px at 82% -12%, #16223c 0%, transparent 60%),
+        radial-gradient(820px 460px at -12% 112%, #15203a 0%, transparent 55%),
+        var(--bg);
+      -webkit-font-smoothing: antialiased;
+    }
+    ::-webkit-scrollbar { width: 10px; height: 10px; }
+    ::-webkit-scrollbar-thumb { background: #2a3a57; border-radius: 99px;
+      border: 2px solid transparent; background-clip: content-box; }
+    ::-webkit-scrollbar-thumb:hover { background: #3a4d70; background-clip: content-box; }
+
+    header {
+      padding: 14px 22px; align-items: center;
+      background: rgba(11,17,32,.72); backdrop-filter: blur(12px);
+      position: sticky; top: 0; z-index: 50;
+    }
+    header h1 { font-size: 17px; font-weight: 650; color: var(--text); letter-spacing: -.01em;
+      display: flex; align-items: center; gap: 9px; }
+    header .logo { width: 26px; height: 26px; flex: none; }
+    header span { font-size: 12.5px; color: var(--muted); padding-left: 4px;
+      border-left: 1px solid var(--line); margin-left: 2px; }
+
+    .layout { grid-template-columns: 440px 1fr; }
+    .sidebar { background: linear-gradient(180deg, rgba(21,31,51,.5), rgba(11,17,32,.15)); }
+
+    form { padding: 18px 20px; }
+    label { font-size: 11px; text-transform: uppercase; letter-spacing: .6px; font-weight: 600; }
+    input, select, #authPanel textarea, .chatinput input {
+      background: rgba(11,17,32,.55); border-radius: 10px;
+      transition: border-color .15s, box-shadow .15s;
+    }
+    input:focus, select:focus, textarea:focus {
+      outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(56,189,248,.16);
+    }
+    button {
+      border-radius: 9px; font-weight: 600; letter-spacing: 0;
+      background: var(--accent); color: #fff; box-shadow: var(--shadow);
+      transition: background .15s, border-color .15s, box-shadow .15s, opacity .15s;
+    }
+    button:hover:not(:disabled) { background: var(--accent-2); box-shadow: 0 2px 10px rgba(91,124,250,.35); }
+    button.ghost { background: transparent; box-shadow: none; color: var(--text);
+      border: 1px solid var(--line-2); font-weight: 500; }
+    button.ghost:hover { background: rgba(255,255,255,.045); border-color: var(--line-2); color: var(--text); }
+
+    #status { padding: 12px 20px; background: rgba(11,17,32,.4); }
+
+    .list { padding: 6px; }
+    .biz {
+      border: 1px solid transparent; border-radius: 14px; margin: 6px 4px; padding: 14px;
+      background: rgba(21,31,51,.32);
+      transition: transform .12s, border-color .15s, background .15s, box-shadow .15s;
+    }
+    .biz:hover {
+      background: rgba(30,44,72,.6); border-color: var(--line);
+      transform: translateY(-2px); box-shadow: 0 10px 26px rgba(0,0,0,.3);
+    }
+    .biz .name { font-size: 15px; font-weight: 700; }
+    .thumb { border: 1px solid var(--line); box-shadow: 0 2px 8px rgba(0,0,0,.35); }
+
+    .tag { font-weight: 700; padding: 3px 9px; background: rgba(56,189,248,.12);
+      color: var(--accent); border: 1px solid rgba(56,189,248,.22); }
+    .hascontact { background: rgba(52,211,153,.12); color: var(--accent2); border-color: rgba(52,211,153,.28); }
+    .nocontact { background: rgba(251,191,36,.12); color: var(--warn); border-color: rgba(251,191,36,.28); }
+    .enriched { background: rgba(167,139,250,.14); color: #c4b5fd; border-color: rgba(167,139,250,.3); }
+    .booked { background: rgba(52,211,153,.16); color: #6ee7b7; border-color: rgba(52,211,153,.3); }
+
+    #authPanel { background: radial-gradient(900px 600px at 70% 0%, #16223c, var(--bg)); }
+    #authPanel .card, #remindersPanel .card, #chatPanel .card, #emailPanel .card {
+      background: var(--glass); backdrop-filter: blur(16px); border: 1px solid var(--line);
+      box-shadow: 0 24px 70px rgba(0,0,0,.5); border-radius: 18px;
+    }
+    #authPanel h2 { font-size: 23px; font-weight: 700; color: var(--text); letter-spacing: -.015em;
+      display: flex; align-items: center; gap: 10px; }
+    #authPanel h2 .logo { width: 30px; height: 30px; }
+    .bubble.ai { background: linear-gradient(135deg, #0c4a6e, #155e75); color: #e0f2fe; }
+
+    /* ===== Map: distinctive interface ===== */
+    #mapWrap {
+      position: relative; margin: 14px; border-radius: 18px; overflow: hidden;
+      border: 1px solid var(--line);
+      box-shadow: inset 0 0 0 1px rgba(56,189,248,.06), 0 20px 50px rgba(0,0,0,.45);
+    }
+    #map { height: 100%; border-radius: 18px; }
+    .leaflet-container { background: #0b1120; }
+    .leaflet-popup-content-wrapper { background: var(--panel); color: var(--text);
+      border-radius: 12px; border: 1px solid var(--line); }
+    .leaflet-popup-tip { background: var(--panel); border: 1px solid var(--line); }
+    #mapBadge {
+      position: absolute; top: 16px; left: 16px; z-index: 500;
+      background: var(--glass); backdrop-filter: blur(12px); border: 1px solid var(--line);
+      border-radius: 14px; padding: 11px 18px; box-shadow: 0 8px 24px rgba(0,0,0,.4);
+    }
+    #mapBadge .big { font-size: 22px; font-weight: 750; line-height: 1.05; display: block;
+      color: var(--text); }
+    #mapBadge .lbl { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .5px; }
+
+    /* Map theme toggle (dark / light basemap) */
+    #themeToggle {
+      position: absolute; left: 16px; bottom: 16px; z-index: 500;
+      display: flex; align-items: center; gap: 7px; width: auto; margin: 0;
+      padding: 8px 13px; border-radius: 99px; cursor: pointer;
+      background: var(--glass); backdrop-filter: blur(12px);
+      border: 1px solid var(--line); color: var(--text);
+      font-size: 12.5px; font-weight: 600; box-shadow: 0 8px 24px rgba(0,0,0,.4);
+      transition: border-color .2s, transform .1s;
+    }
+    #themeToggle:hover { border-color: var(--accent); }
+    #themeToggle:active { transform: scale(.96); }
+    #themeIcon { font-size: 14px; line-height: 1; }
+
+    /* Light basemap: lighten the canvas + soften the deep-space framing. */
+    #mapWrap.light .leaflet-container { background: #e2e8f0; }
+    #mapWrap.light.globe::before { opacity: .2; animation: none; }   /* fainter, calm stars over light tiles */
+    #mapWrap.light.globe::after {
+      background: radial-gradient(circle at 50% 48%, transparent 58%, rgba(15,23,42,.30) 100%);
+      box-shadow: inset 0 0 120px 40px rgba(15,23,42,.28),
+                  inset 0 0 60px 0 rgba(56,189,248,.10);
+    }
+
+    /* ===== Globe mode: the Earth floating in space (shown before any search) ===== */
+    /* Starfield + soft cyan rim glow, layered over the dark world map. */
+    #mapWrap.globe::before {
+      content: ""; position: absolute; inset: 0; z-index: 401; pointer-events: none;
+      background:
+        radial-gradient(1.6px 1.6px at 12% 22%, rgba(255,255,255,.85), transparent),
+        radial-gradient(1.4px 1.4px at 78% 16%, rgba(255,255,255,.7),  transparent),
+        radial-gradient(1.2px 1.2px at 30% 72%, rgba(255,255,255,.65), transparent),
+        radial-gradient(1.8px 1.8px at 64% 60%, rgba(186,230,253,.8), transparent),
+        radial-gradient(1.2px 1.2px at 88% 80%, rgba(255,255,255,.6),  transparent),
+        radial-gradient(1.4px 1.4px at 46% 34%, rgba(255,255,255,.55), transparent),
+        radial-gradient(1.2px 1.2px at 8%  62%, rgba(255,255,255,.6),  transparent),
+        radial-gradient(1.6px 1.6px at 94% 44%, rgba(186,230,253,.7), transparent);
+      opacity: .55; transition: opacity 1s ease;
+      animation: starTwinkle 5s ease-in-out infinite;
+    }
+    /* Vignette: darken the edges so the map reads as a planet against deep space. */
+    #mapWrap.globe::after {
+      content: ""; position: absolute; inset: 0; z-index: 402; pointer-events: none;
+      background: radial-gradient(circle at 50% 48%, transparent 52%, rgba(2,6,23,.78) 100%);
+      box-shadow: inset 0 0 140px 50px rgba(2,6,23,.85),
+                  inset 0 0 60px 0 rgba(56,189,248,.10);
+      opacity: 1; transition: opacity 1s ease;
+    }
+    #mapWrap::before, #mapWrap::after { opacity: 0; }   /* fade out when we leave globe mode */
+    @keyframes starTwinkle { 0%,100% { opacity:.4 } 50% { opacity:.7 } }
+
+    /* Pulsing "landing" marker dropped at the searched location after the fly-in. */
+    .dest-pulse span {
+      position: absolute; left: 50%; top: 50%; width: 14px; height: 14px;
+      margin: -7px 0 0 -7px; border-radius: 50%;
+      border: 2px solid var(--accent, #38bdf8);
+      animation: destPing 1.8s cubic-bezier(.2,.7,.4,1) infinite;
+    }
+    .dest-pulse span:nth-child(2) { animation-delay: .9s; }
+    @keyframes destPing {
+      0%   { transform: scale(.35); opacity: .9; }
+      80%,100% { transform: scale(3); opacity: 0; }
+    }
+
+    /* Compact action toolbar (so buttons don't crowd the business list) */
+    .importbar { padding: 8px 14px; }
+    .actionbar { display: flex; flex-wrap: wrap; gap: 6px; }
+    .actionbar .mini { width: auto; margin: 0; padding: 5px 9px; font-size: 11.5px; font-weight: 500;
+      flex: 0 1 auto; gap: 5px; border-radius: 7px; }
+    .actionbar .mini .ico { width: 13px; height: 13px; }
+    /* Keep Leaflet zoom buttons clear of the floating count badge */
+    .leaflet-top.leaflet-right { top: 12px; right: 12px; }
+
+    /* Business cards: keep the details (name, contact, address) prominent and
+       turn the per-card actions into compact chips instead of full-width buttons
+       that would otherwise bury the business info. */
+    .biz { padding: 14px 20px; }
+    .biz .name { font-size: 15px; font-weight: 700; }
+    .biz .meta { line-height: 1.55; margin-top: 4px; }
+    .biz .meta a { color: var(--accent); }
+    .biz .bizactions { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 10px; }
+    .biz button { width: auto; margin: 0; padding: 6px 11px; font-size: 12.5px; border-radius: 8px; }
+
+    /* ===== Icon system (clean line icons, replace emoji) ===== */
+    .ico { width: 15px; height: 15px; flex: none; display: inline-block; vertical-align: -2px; }
+    button, #themeToggle { display: inline-flex; align-items: center; justify-content: center; gap: 7px; }
+    .tag { display: inline-flex; align-items: center; gap: 4px; }
+    .tag .ico { width: 12px; height: 12px; }
+    .biz .meta { display: block; }
+    .contactline { display: inline-flex; align-items: center; gap: 5px; margin-right: 14px; white-space: nowrap; }
+    .contactline .ico { width: 13px; height: 13px; opacity: .75; }
+    h1 .ico, h2 .ico { vertical-align: middle; }
+    /* Refined tags: quieter, monochrome-leaning with a subtle accent */
+    .tag { font-size: 10.5px; font-weight: 600; text-transform: none; letter-spacing: 0;
+      padding: 3px 8px; border-radius: 6px; }
+    /* Section headings in dialogs */
+    #remindersPanel h2, #analyticsPanel h2, #emailPanel h2, #chatPanel h2 {
+      font-size: 18px; font-weight: 650; letter-spacing: -.01em; color: var(--text);
+      display: flex; align-items: center; gap: 8px; }
+    /* Refined inputs */
+    input, select, textarea { border-color: var(--line-2) !important; }
+    /* Refined scrollbar already themed below; keep list dividers subtle */
+    .biz { border-radius: 10px; }
+
+    /* Admin dashboard */
+    .adm-tiles { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 4px; }
+    .adm-tile { flex: 1 1 110px; background: rgba(255,255,255,.03); border: 1px solid var(--line);
+      border-radius: 10px; padding: 12px 14px; }
+    .adm-tile .n { font-size: 22px; font-weight: 750; }
+    .adm-tile .l { font-size: 10.5px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; margin-top: 2px; }
+    .adm-sec { font-size: 13px; font-weight: 650; margin: 20px 0 8px; }
+    .adm-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; }
+    .adm-table { width: 100%; border-collapse: collapse; font-size: 12.5px; white-space: nowrap; }
+    .adm-table th { text-align: left; color: var(--muted); font-weight: 600; padding: 8px 10px;
+      border-bottom: 1px solid var(--line); background: rgba(255,255,255,.02); }
+    .adm-table td { padding: 7px 10px; border-bottom: 1px solid var(--line); }
+    .adm-table tr:last-child td { border-bottom: none; }
+
+    /* ============ Responsive: phones & tablets ============ */
+    /* On narrow screens the fixed 2-column grid can't fit, so stack it: the
+       search sidebar on top, the map below with a real height, and let the
+       page scroll normally instead of locking to 100vh. */
+    @media (max-width: 860px) {
+      body { height: auto; min-height: 100vh; }
+      header { flex-wrap: wrap; padding: 12px 16px; gap: 6px 10px; }
+      header h1 { font-size: 18px; }
+      header span { display: none; }                 /* hide tagline on small screens */
+      header > div { margin-left: auto; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+      header button, .userbox button { width: auto; margin-top: 0; }
+      .userbox { flex-wrap: wrap; gap: 6px; }
+
+      .layout { display: flex; flex-direction: column; flex: none; }
+      .sidebar { border-right: none; border-bottom: 1px solid var(--line); }
+      .list { flex: none; max-height: 52vh; }        /* cap so it scrolls, not the whole page */
+
+      #mapWrap { height: 62vh; margin: 10px; }        /* map needs an explicit height when stacked */
+      #mapBadge { top: 10px; left: 10px; padding: 8px 13px; }
+      #mapBadge .big { font-size: 18px; }
+    }
+
+    /* Phones: roomier tap targets, tighter padding, single-column filter row. */
+    @media (max-width: 560px) {
+      form { padding: 14px 14px; }
+      #status, .biz { padding-left: 14px; padding-right: 14px; }
+      .row { flex-direction: column; gap: 0; }        /* radius + category stack */
+      input, select { padding: 11px 12px; font-size: 16px; }  /* 16px avoids iOS zoom-on-focus */
+      button { padding: 12px; }
+      /* Keep the toolbar compact (a wrapping row of small chips) so it never
+         buries the business list on a phone. */
+      .actionbar .mini { flex: 0 1 auto; padding: 6px 10px; font-size: 12px; }
+      #mapWrap { height: 56vh; margin: 8px; }
+      .card { width: 94vw; }                           /* dialogs fit the phone */
+      #chatPanel .card { width: 96vw; height: 88vh; }
+    }
+  </style>
+</head>
+<body>
+  <!-- Brand mark, defined once and referenced via <use> -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <symbol id="logo-mark" viewBox="0 0 32 32">
+      <rect width="32" height="32" rx="8" fill="#5b7cfa"/>
+      <circle cx="16" cy="16" r="7.5" fill="none" stroke="#fff" stroke-width="2"/>
+      <circle cx="16" cy="16" r="2.4" fill="#fff"/>
+      <path d="M16 3.5V6.5M16 25.5V28.5M3.5 16H6.5M25.5 16H28.5" stroke="#fff" stroke-width="2" stroke-linecap="round"/>
+    </symbol>
+  </svg>
+  <header>
+    <h1><svg class="logo"><use href="#logo-mark"/></svg>Scopio</h1>
+    <span>Local business intelligence &amp; outreach</span>
+    <div style="margin-left:auto; display:flex; align-items:center; gap:10px">
+      <div class="userbox" id="userBox" style="display:none">
+        <span id="userLabel"></span>
+        <button class="ghost" id="connectEmailBtn" data-ico="mail">Connect email</button>
+        <button class="ghost" id="pollInboxBtn" data-ico="message" title="Check for customer replies now and let the AI answer them">Check replies</button>
+        <button class="ghost" id="logoutBtn">Sign out</button>
+      </div>
+      <button class="ghost" id="draftsToggle" data-ico="mail">Drafts<span id="draftsCount" style="display:none;margin-left:6px;background:var(--accent,#2563eb);color:#fff;border-radius:999px;padding:1px 7px;font-size:11px"></span></button>
+      <button class="ghost" id="analyticsToggle" data-ico="chart">Analytics</button>
+      <button class="ghost" id="remindersToggle" data-ico="clock">Reminders</button>
+      <button class="ghost" id="adminToggle" data-ico="scan" style="display:none">Admin</button>
+    </div>
+  </header>
+
+  <div id="authPanel">
+    <div class="card">
+      <h2><svg class="logo"><use href="#logo-mark"/></svg>Scopio</h2>
+      <div class="sub">Find and reach the right local businesses. Sign in or create your account.</div>
+
+      <div id="registerForm">
+        <label>Your name</label>
+        <input id="regName" placeholder="e.g. Akash" />
+        <label>Your company</label>
+        <input id="regCompany" placeholder="e.g. NovaAI Solutions" />
+        <label>What services do you offer your customers?</label>
+        <textarea id="regServices" rows="3" placeholder="e.g. We set up AI chatbots and automated booking for local shops."></textarea>
+        <label>Email</label>
+        <input id="regEmail" type="email" placeholder="you@email.com" />
+        <label>Password</label>
+        <input id="regPassword" type="password" placeholder="min 6 characters" />
+        <button id="registerBtn">Create account</button>
+        <div class="err" id="regErr"></div>
+        <div style="font-size:13px;margin-top:8px">
+          Already have an account? <span class="authtoggle" id="toLogin">Sign in</span>
+          · <span class="authtoggle" id="skipAuth">Skip (demo)</span>
+        </div>
+      </div>
+
+      <div id="loginForm" style="display:none">
+        <label>Email</label>
+        <input id="logEmail" type="email" placeholder="you@email.com" />
+        <label>Password</label>
+        <input id="logPassword" type="password" />
+        <button id="loginBtn">Sign in</button>
+        <div class="err" id="logErr"></div>
+        <div style="font-size:13px;margin-top:8px">
+          New here? <span class="authtoggle" id="toRegister">Create an account</span>
+          · <span class="authtoggle" id="skipAuth2">Skip (demo)</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="remindersPanel">
+    <div class="card">
+      <button class="closebtn" id="remindersClose">Close</button>
+      <h2 data-ico="clock">Call reminders</h2>
+      <p style="color:var(--muted);font-size:12.5px;margin:0 0 12px">
+        When a business agrees to a call, the date is saved here. Overdue ones are flagged.</p>
+      <div id="remindersList">Loading…</div>
+    </div>
+  </div>
+
+  <div id="draftsPanel" style="position:fixed;inset:0;background:rgba(2,6,23,.7);display:none;align-items:center;justify-content:center;z-index:1100">
+    <div class="card" style="width:min(760px,96vw);max-height:88vh;overflow-y:auto;padding:22px">
+      <button class="closebtn" id="draftsClose">Close</button>
+      <h2 style="margin:0 0 4px" data-ico="mail">Outreach drafts</h2>
+      <p style="color:var(--muted);font-size:12.5px;margin:0 0 10px">
+        In <b>review mode</b> the AI writes every message but waits for you — edit if you like,
+        then approve to send, or discard.</p>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;font-size:13px">
+        <span>Mode:</span>
+        <select id="outreachMode" style="padding:4px 8px">
+          <option value="review">Review — I approve each message</option>
+          <option value="autonomous">Autonomous — AI sends directly</option>
+        </select>
+      </div>
+      <div id="draftsList">Loading…</div>
+    </div>
+  </div>
+
+  <div id="adminPanel" style="position:fixed;inset:0;background:rgba(2,6,23,.7);display:none;align-items:center;justify-content:center;z-index:1100">
+    <div class="card" style="width:min(920px,96vw);max-height:88vh;overflow-y:auto;padding:22px">
+      <button class="closebtn" id="adminClose">Close</button>
+      <h2 style="margin:0 0 4px" data-ico="scan">Admin — all activity</h2>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:14px">Everything across every account (owner view).</div>
+      <div id="adminBody">Loading…</div>
+    </div>
+  </div>
+
+  <div id="analyticsPanel" style="position:fixed;inset:0;background:rgba(2,6,23,.7);display:none;align-items:center;justify-content:center;z-index:1100">
+    <div class="card" style="width:min(640px,94vw);max-height:85vh;overflow-y:auto;padding:22px">
+      <button class="closebtn" id="analyticsClose">Close</button>
+      <h2 style="margin:0 0 14px" data-ico="chart">Analytics</h2>
+      <div id="analyticsBody">Loading…</div>
+    </div>
+  </div>
+
+  <div id="emailPanel" style="position:fixed;inset:0;background:rgba(2,6,23,.7);display:none;align-items:center;justify-content:center;z-index:1100">
+    <div class="card" style="background:var(--panel);border:1px solid var(--line);border-radius:12px;width:min(440px,94vw);padding:24px">
+      <button class="closebtn" id="emailClose">Close</button>
+      <h2 style="margin:0 0 4px" data-ico="mail">Connect your email</h2>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:14px">
+        Lets Scopio send emails automatically on your behalf. For Gmail: turn on 2-Step
+        Verification, then create an <b>App Password</b> (Google Account → Security → App passwords)
+        and paste it below — not your normal password.
+      </div>
+      <label>Your email</label>
+      <input id="emEmail" type="email" placeholder="you@gmail.com" />
+      <label>App password</label>
+      <input id="emPass" type="password" placeholder="16-character app password" />
+      <button id="emConnectBtn">Connect &amp; verify</button>
+      <div class="err" id="emErr" style="color:#fca5a5;font-size:13px;min-height:16px;margin-top:6px"></div>
+    </div>
+  </div>
+
+  <div id="chatPanel">
+    <div class="card">
+      <button class="closebtn" id="chatClose">Close</button>
+      <h2 id="chatTitle" data-ico="message">Outreach</h2>
+      <div style="font-size:12px;color:var(--muted)">
+        Preview mode — type as the business owner to see the conversation. A call reminder is set when they agree.
+      </div>
+      <div id="chatLog"></div>
+      <div class="chatinput">
+        <input id="chatInput" placeholder="Reply as the business owner…" />
+        <button class="ghost" id="chatSend">Send</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="waPanel" style="position:fixed;inset:0;background:rgba(2,6,23,.7);display:none;align-items:center;justify-content:center;z-index:1100">
+    <div class="card" style="width:min(520px,94vw);padding:20px">
+      <button class="closebtn" id="waClose">Close</button>
+      <h2 style="margin:0 0 4px" data-ico="send">WhatsApp send queue</h2>
+      <div style="font-size:12px;color:var(--muted)">
+        Tap <b>Send on WhatsApp</b> → press send in WhatsApp → <b>Next</b>. (WhatsApp requires the tap — this is the fastest legal way.)
+      </div>
+      <div id="waBody" style="margin-top:16px"></div>
+    </div>
+  </div>
+
+  <div class="layout">
+    <div class="sidebar">
+      <form id="searchForm">
+        <label>Address</label>
+        <input id="address" placeholder="Barasat, 700125" value="Barasat, 700125" />
+        <button type="button" id="gpsBtn" class="ghost mini" style="width:100%;margin-top:6px"
+                data-ico="pin" title="Search around your current location">Use my location</button>
+        <div class="row">
+          <div>
+            <label>Radius (m)</label>
+            <input id="radius" type="number" value="2000" min="100" max="20000" />
+          </div>
+          <div>
+            <label>Category</label>
+            <select id="category">
+              <option value="">All</option>
+              <option value="food">Food</option>
+              <option value="retail">Retail</option>
+              <option value="health">Health</option>
+              <option value="services">Services</option>
+              <option value="finance">Finance</option>
+              <option value="hospitality">Hospitality</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+        </div>
+        <label style="display:flex;align-items:center;gap:8px;text-transform:none;letter-spacing:0;font-size:13px;margin-top:12px;cursor:pointer;color:var(--text)">
+          <input type="checkbox" id="onlyContact" checked style="width:auto;margin:0" />
+          Only show businesses I can contact
+        </label>
+        <button type="submit" id="goBtn" data-ico="search">Find businesses</button>
+      </form>
+
+      <div id="targetChip" style="display:none;margin-top:10px;font-size:13px;color:var(--text);
+           background:rgba(12,74,110,.35);border:1px solid rgba(56,189,248,.3);
+           border-radius:10px;padding:8px 11px"></div>
+
+      <div id="status">Enter an address (or use your location) and hit <b>Find businesses</b>.</div>
+
+      <div class="importbar" id="importBar" style="display:none">
+        <div class="actionbar">
+          <button class="ghost mini" id="enrichBtn" type="button" data-ico="scan" title="Research each business (web + its website) to fill in contacts & profile">Enrich contacts</button>
+          <button class="ghost mini" id="bulkBtn" type="button" data-ico="check" title="Reach out to every business with contact details (asks for confirmation)">Confirm &amp; reach out</button>
+          <button class="ghost mini" id="waQueueBtn" type="button" data-ico="send" title="Tap-through WhatsApp send queue">WhatsApp queue</button>
+        </div>
+        <details style="margin-top:10px">
+          <summary style="cursor:pointer; color:var(--muted)">Add businesses manually (optional)</summary>
+          <div style="margin-top:8px; font-size:12px; color:var(--muted)">
+            Only if you know shops we might be missing. Not required — the address
+            search already lists businesses automatically.
+            <br>CSV columns: <code>name,category,address,phone,email,website,lat,lng</code>
+            <br><input type="file" id="csvFile" accept=".csv" />
+            <button class="ghost" id="importBtn" type="button">Upload CSV</button>
+          </div>
+        </details>
+      </div>
+
+      <div class="list" id="list"></div>
+    </div>
+
+    <div id="mapWrap">
+      <div id="mapBadge"><span class="big" id="mapCount">0</span><span class="lbl" id="mapLbl">businesses found</span></div>
+      <button id="themeToggle" type="button" title="Switch map theme"><span id="themeIcon"></span><span id="themeLbl">Dark</span></button>
+      <div id="map"></div>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    const $ = (id) => document.getElementById(id);
+
+    // ---- Icon system: clean line icons (currentColor) instead of emoji ----
+    const ICON = {
+      pin:    '<path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="2.6"/>',
+      search: '<circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/>',
+      scan:   '<path d="M4 8V6a2 2 0 0 1 2-2h2"/><path d="M16 4h2a2 2 0 0 1 2 2v2"/><path d="M20 16v2a2 2 0 0 1-2 2h-2"/><path d="M8 20H6a2 2 0 0 1-2-2v-2"/><circle cx="12" cy="12" r="2.6"/>',
+      check:  '<path d="M20 6 9 17l-5-5"/>',
+      message:'<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>',
+      phone:  '<path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3 19.5 19.5 0 0 1-6-6 19.8 19.8 0 0 1-3-8.6A2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7 12 12 0 0 0 .7 2.7 2 2 0 0 1-.5 2.1L8.1 9.9a16 16 0 0 0 6 6l1.4-1.2a2 2 0 0 1 2.1-.5 12 12 0 0 0 2.7.7 2 2 0 0 1 1.7 2Z"/>',
+      mail:   '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/>',
+      send:   '<path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4Z"/>',
+      clock:  '<circle cx="12" cy="12" r="9"/><path d="M12 7.5V12l3 2"/>',
+      chart:  '<path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V6"/><path d="M8 17v-4"/>',
+      calendar:'<rect x="3" y="4.5" width="18" height="17" rx="2"/><path d="M16 2.5v4M8 2.5v4M3 10h18"/>',
+      video:  '<rect x="2" y="6" width="14" height="12" rx="2"/><path d="m22 8-6 4 6 4V8Z"/>',
+      globe:  '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a15 15 0 0 1 0 18 15 15 0 0 1 0-18Z"/>',
+      link:   '<path d="M10 13a5 5 0 0 0 7 0l2-2a5 5 0 0 0-7-7l-1 1"/><path d="M14 11a5 5 0 0 0-7 0l-2 2a5 5 0 0 0 7 7l1-1"/>',
+      moon:   '<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"/>',
+      sun:    '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
+      dot:    '<circle cx="12" cy="12" r="4"/>',
+    };
+    function icon(name) {
+      return `<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">${ICON[name] || ''}</svg>`;
+    }
+    // Populate any element that declares data-ico="name" (static buttons/headings).
+    function paintIcons(root = document) {
+      root.querySelectorAll('[data-ico]').forEach((el) => {
+        if (el.dataset.icoDone) return;
+        el.insertAdjacentHTML('afterbegin', icon(el.dataset.ico));
+        el.dataset.icoDone = '1';
+      });
+    }
+    document.addEventListener('DOMContentLoaded', () => paintIcons());
+
+    // ---- Auth: inject Bearer token into every request ----
+    const TOKEN_KEY = 'scopio_token';
+    const getToken = () => localStorage.getItem(TOKEN_KEY);
+    const _fetch = window.fetch.bind(window);
+    window.fetch = (url, opts = {}) => {
+      const t = getToken();
+      if (t) opts.headers = { ...(opts.headers || {}), Authorization: 'Bearer ' + t };
+      return _fetch(url, opts);
+    };
+
+    function errMsg(data) {
+      if (!data || !data.detail) return 'Something went wrong.';
+      if (Array.isArray(data.detail)) return (data.detail[0] && data.detail[0].msg) || 'Invalid input.';
+      return data.detail;
+    }
+
+    let currentJobId = null;
+    let pollTimer = null;
+    let map, markers = [];
+    let spinRAF = null, hasFlown = false, destPulse = null;
+    let baseLayer = null;
+
+    // Free CARTO basemaps (no API key) for each theme.
+    const BASEMAPS = {
+      dark:  { url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',  icon: 'moon', label: 'Dark'  },
+      light: { url: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', icon: 'sun',  label: 'Light' },
+    };
+    const THEME_KEY = 'scopio_map_theme';
+    let mapTheme = localStorage.getItem(THEME_KEY) === 'light' ? 'light' : 'dark';
+
+    function setBasemap(theme) {
+      mapTheme = BASEMAPS[theme] ? theme : 'dark';
+      localStorage.setItem(THEME_KEY, mapTheme);
+      const b = BASEMAPS[mapTheme];
+      if (baseLayer) map.removeLayer(baseLayer);
+      // keepBuffer keeps a wide ring of tiles loaded, so the continuous spin never pans into
+      // empty space and reloads tiles (the other source of flicker).
+      baseLayer = L.tileLayer(b.url, {
+        attribution: '© OpenStreetMap · © CARTO', maxZoom: 20, keepBuffer: 8, updateWhenZooming: false,
+      }).addTo(map);
+      baseLayer.bringToBack();
+      $('mapWrap').classList.toggle('light', mapTheme === 'light');
+      // Show the icon/label of the theme you'd switch TO, so the button reads as an action.
+      const next = mapTheme === 'dark' ? BASEMAPS.light : BASEMAPS.dark;
+      $('themeIcon').innerHTML = icon(next.icon);
+      $('themeLbl').textContent = next.label;
+    }
+
+    function initMap() {
+      // Open on the whole Earth, drifting in space — no target yet.
+      // fadeAnimation:false stops the per-frame tile cross-fade that caused flicker during the spin.
+      // (No worldCopyJump — it snaps the view at the date line, which looked like a jump/flicker.)
+      map = L.map('map', { zoomControl: false, minZoom: 2, fadeAnimation: false })
+             .setView([20, 0], 2);
+      L.control.zoom({ position: 'topright' }).addTo(map);   // top-right, clear of the count badge
+      setBasemap(mapTheme);                                  // dark by default, or last-used theme
+      $('themeToggle').onclick = () => setBasemap(mapTheme === 'dark' ? 'light' : 'dark');
+      enterGlobeMode();
+      setTimeout(() => map.invalidateSize(), 200);
+      // Re-fit the map when the layout reflows (rotate phone, resize window, stack/unstack)
+      // — otherwise Leaflet keeps its old size and renders gray tiles.
+      let _rz;
+      const refit = () => { clearTimeout(_rz); _rz = setTimeout(() => map && map.invalidateSize(), 150); };
+      window.addEventListener('resize', refit);
+      window.addEventListener('orientationchange', refit);
+    }
+
+    // ---- Globe mode: floating Earth + gentle auto-spin until the user searches ----
+    function enterGlobeMode() {
+      $('mapWrap').classList.add('globe');
+      $('mapLbl').textContent = 'spin the globe · search to fly in';
+      startIdleSpin();
+      map.once('dragstart zoomstart', stopIdleSpin);   // hand control to the user if they grab it
+    }
+
+    function startIdleSpin() {
+      stopIdleSpin();
+      let last = null;
+      const step = (t) => {
+        if (last !== null) map.panBy([(t - last) * 0.012, 0], { animate: false });  // slow eastward drift
+        last = t;
+        spinRAF = requestAnimationFrame(step);
+      };
+      spinRAF = requestAnimationFrame(step);
+    }
+    function stopIdleSpin() {
+      if (spinRAF) { cancelAnimationFrame(spinRAF); spinRAF = null; }
+    }
+
+    // ---- Cinematic fly-in: arc out of orbit and zoom down onto the target ----
+    function flyToLocation(lat, lng) {
+      stopIdleSpin();
+      $('mapWrap').classList.remove('globe');
+      map.flyTo([lat, lng], 14, { duration: 3.2, easeLinearity: 0.08 });
+      map.once('moveend', () => dropPulse(lat, lng));
+    }
+
+    function dropPulse(lat, lng) {
+      if (destPulse) { map.removeLayer(destPulse); destPulse = null; }
+      const icon = L.divIcon({ className: 'dest-pulse', html: '<span></span><span></span>', iconSize: [0, 0] });
+      destPulse = L.marker([lat, lng], { icon, interactive: false, zIndexOffset: -200 }).addTo(map);
+    }
+
+    function fitToMarkers() {
+      if (markers.length) {
+        map.flyToBounds(L.featureGroup(markers).getBounds().pad(0.25), { duration: 1.2, maxZoom: 16 });
+      }
+    }
+
+    function clearMarkers() {
+      markers.forEach(m => map.removeLayer(m));
+      markers = [];
+    }
+
+    function setStatus(html) { $('status').innerHTML = html; }
+
+    // GPS coords captured via "📍 Use my location" (cleared when the user types an address).
+    let gpsCoords = null;
+    $('address').addEventListener('input', () => { gpsCoords = null; });
+
+    function useMyLocation() {
+      if (!navigator.geolocation) { setStatus('Your browser can’t share location.'); return; }
+      setStatus('Getting your location…');
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          gpsCoords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+          $('address').value = '';
+          setStatus(`Using your location (${gpsCoords.lat.toFixed(4)}, ${gpsCoords.lng.toFixed(4)}). Searching…`);
+          startSearch();
+        },
+        () => setStatus('Couldn’t get your location — allow location access or type an address.'),
+        { enableHighAccuracy: true, timeout: 10000 },
+      );
+    }
+
+    function showTargetChip(job) {
+      const types = job.target_profile && job.target_profile.target_business_types;
+      const chip = $('targetChip');
+      if (types && types.length) {
+        chip.innerHTML = icon('scan') + ' <b>Targeting:</b> ' + types.map(escapeHtml).join(', ');
+        chip.style.display = 'block';
+      } else {
+        chip.style.display = 'none';
+      }
+    }
+
+    async function startSearch(e) {
+      if (e) e.preventDefault();
+      const addr = $('address').value.trim();
+      if (!addr && !gpsCoords) { setStatus('Enter an address or use your location.'); return; }
+      $('goBtn').disabled = true;
+      stopIdleSpin();
+      hasFlown = false;                                  // re-arm the fly-in for this search
+      if (destPulse) { map.removeLayer(destPulse); destPulse = null; }
+      clearMarkers();
+      $('list').innerHTML = '';
+      $('targetChip').style.display = 'none';
+      setStatus('Submitting job…');
+      try {
+        const res = await fetch('/search_jobs', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            raw_address: addr || null,
+            lat: gpsCoords ? gpsCoords.lat : null,
+            lng: gpsCoords ? gpsCoords.lng : null,
+            radius_m: parseInt($('radius').value, 10),
+            category: $('category').value || null,
+          }),
+        });
+        const job = await res.json();
+        currentJobId = job.id;
+        showTargetChip(job);
+        $('importBar').style.display = 'block';
+        poll();
+      } catch {
+        setStatus('Couldn’t start the search. Please try again.');
+        $('goBtn').disabled = false;
+      }
+    }
+
+    async function poll() {
+      clearTimeout(pollTimer);
+      const res = await fetch('/search_jobs/' + currentJobId);
+      const job = await res.json();
+      const labels = {
+        pending: 'Getting ready…', geocoding: 'Pinpointing the location…',
+        querying: 'Searching for businesses…', enriching: 'Finding contact details…',
+        completed: 'Done', failed: 'Failed',
+      };
+      // The instant geocoding resolves a center, launch the cinematic fly-in.
+      if (job.center_lat && !hasFlown) {
+        hasFlown = true;
+        flyToLocation(job.center_lat, job.center_lng);
+      }
+      if (job.status === 'completed') {
+        setStatus(`<b>${labels[job.status]}</b> — found <span class="count">${job.result_count}</span> businesses.`);
+        await loadBusinesses();
+        fitToMarkers();                                  // frame the results once we have markers
+        $('goBtn').disabled = false;
+      } else if (job.status === 'failed') {
+        setStatus('Something went wrong with the search. Please try again.');
+        $('goBtn').disabled = false;
+      } else {
+        setStatus('<b>' + (labels[job.status] || 'Working…') + '</b>');
+        pollTimer = setTimeout(poll, 1500);
+      }
+    }
+
+    function jobBizUrl() {
+      const cat = $('category').value;
+      const onlyContact = $('onlyContact').checked;
+      return '/search_jobs/' + currentJobId + '/businesses?limit=200'
+        + (cat ? '&category=' + cat : '')
+        + (onlyContact ? '&contactable=true' : '');
+    }
+
+    async function loadBusinesses() {
+      const data = await (await fetch(jobBizUrl())).json();
+      renderList(data.items);
+      // Show the actual number (contactable-only when the filter is on).
+      $('mapCount').textContent = data.total;
+      const noun = $('onlyContact').checked ? 'contactable businesses' : 'businesses found';
+      $('mapLbl').textContent = data.total > data.items.length
+        ? `${noun} · ${data.items.length} on map`
+        : noun;
+      return data.items;
+    }
+
+    function renderList(items) {
+      clearMarkers();
+      const list = $('list');
+      if (!items.length) {
+        list.innerHTML = '<div class="biz">No businesses found. Try a larger radius or import a CSV.</div>';
+        $('mapCount').textContent = '0';
+        return;
+      }
+      list.innerHTML = '';
+      items.forEach(b => {
+        const div = document.createElement('div');
+        div.className = 'biz';
+        const contactTag = b.has_contact
+          ? `<span class="tag hascontact">${icon('check')}has contact</span>`
+          : '<span class="tag nocontact">no contact</span>';
+        const enrichedTag = b.enriched ? `<span class="tag enriched">${icon('check')}enriched</span>` : '';
+        const bookedTag = (b.status === 'callback_scheduled' || b.status === 'meeting_booked')
+          ? `<span class="tag booked">${icon('clock')}callback set</span>` : '';
+        const cl = (ic, inner) => `<span class="contactline">${icon(ic)}${inner}</span>`;
+        const contactLines = [];
+        if (b.phone) contactLines.push(cl('phone', escapeHtml(b.phone)));
+        if (b.email) contactLines.push(cl('mail', escapeHtml(b.email)));
+        if (b.website) contactLines.push(cl('link', `<a href="${b.website}" target="_blank">website</a>`));
+        if (b.opening_hours) contactLines.push(cl('clock', escapeHtml(b.opening_hours)));
+        const det = b.details || {};
+        const socials = det.socials || {};
+        Object.keys(socials).forEach(k => {
+          if (socials[k]) contactLines.push(
+            `<a href="${socials[k]}" target="_blank">${escapeHtml(k)}</a>`);
+        });
+        const contactHtml = contactLines.length
+          ? contactLines.join('')
+          : '<span style="color:var(--warn)">No contact yet — run “Enrich contacts”.</span>';
+        const descHtml = det.description
+          ? `<div class="meta" style="font-style:italic">${escapeHtml(det.description)}</div>` : '';
+        const img = b.image_url
+          ? `<img class="thumb" src="${b.image_url}" onerror="this.style.display='none'" alt="" />`
+          : '';
+        div.innerHTML = `
+          <div class="row2">
+            ${img}
+            <div style="flex:1">
+              <div class="name">${escapeHtml(b.name)}</div>
+              <div class="meta">
+                <span class="tag">${b.category || 'other'}</span>${contactTag}${enrichedTag}${bookedTag}
+              </div>
+              <div class="meta">${contactHtml}</div>
+              ${descHtml}
+              <div class="meta">${escapeHtml(b.address || '')}</div>
+              <div class="bizactions">
+                <button class="ghost bookbtn">${icon('clock')}Set reminder</button>
+                ${b.phone ? `<button class="ghost callbtn">${icon('phone')}Call</button>` : ''}
+                ${b.has_contact ? `<button class="ghost reachbtn">${icon('message')}Reach out</button>` : ''}
+                ${b.whatsappable ? `<button class="ghost sendbtn wabtn">${icon('send')}WhatsApp</button>` : ''}
+                ${b.email ? `<button class="ghost sendbtn embtn">${icon('mail')}Email</button>` : ''}
+              </div>
+            </div>
+          </div>`;
+        if (b.lat && b.lng) {
+          const hasC = b.has_contact;
+          const marker = L.circleMarker([b.lat, b.lng], {
+            radius: 7, weight: 2,
+            color: hasC ? '#34c88d' : '#5b7cfa',
+            fillColor: hasC ? '#34c88d' : '#5b7cfa',
+            fillOpacity: .55,
+          }).addTo(map)
+            .bindPopup(`<b>${escapeHtml(b.name)}</b><br>${escapeHtml(b.category||'')}` +
+                       (b.phone ? '<br>' + escapeHtml(b.phone) : ''));
+          markers.push(marker);
+          div.onclick = () => { map.setView([b.lat, b.lng], 17); marker.openPopup(); };
+        }
+        div.querySelector('.bookbtn').addEventListener('click', (e) => {
+          e.stopPropagation();
+          setReminder(b);
+        });
+        const cb = div.querySelector('.callbtn');
+        if (cb) cb.addEventListener('click', (e) => { e.stopPropagation(); placeCall(b.phone_e164 || b.phone); });
+        const rb = div.querySelector('.reachbtn');
+        if (rb) rb.addEventListener('click', (e) => { e.stopPropagation(); startOutreach(b); });
+        const wa = div.querySelector('.wabtn');
+        if (wa) wa.addEventListener('click', (e) => { e.stopPropagation(); openContactLink(b.id, 'whatsapp'); });
+        const em = div.querySelector('.embtn');
+        if (em) em.addEventListener('click', (e) => { e.stopPropagation(); openContactLink(b.id, 'email'); });
+        list.appendChild(div);
+      });
+      $('mapCount').textContent = markers.length;
+    }
+
+    async function uploadCsv() {
+      if (!currentJobId) return;
+      const file = $('csvFile').files[0];
+      if (!file) { setStatus('Pick a CSV file first.'); return; }
+      const fd = new FormData();
+      fd.append('file', file);
+      setStatus('Importing CSV…');
+      const res = await fetch('/search_jobs/' + currentJobId + '/import', { method: 'POST', body: fd });
+      const r = await res.json();
+      setStatus(`Imported <span class="count">${r.imported}</span>, skipped ${r.skipped}.`);
+      loadBusinesses();
+    }
+
+    function escapeHtml(s) {
+      return (s || '').replace(/[&<>"']/g, c =>
+        ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    }
+
+    // Click-to-call: build a tel: URI from a phone number, and detect phone-like contacts.
+    function telLink(phone) { return 'tel:' + String(phone || '').replace(/[^0-9+]/g, ''); }
+    function isPhone(s) { return !!s && !s.includes('@') && /[0-9]/.test(s); }
+    function placeCall(phone) { if (phone) window.location.href = telLink(phone); }
+
+    const countContacts = (items) => items.filter(x => x.phone || x.email).length;
+    // Counts phone + email separately, so adding an email to a business that already
+    // had a phone is still detected as progress (otherwise enrichment looks like a no-op).
+    const contactPoints = (items) => items.reduce((n, x) => n + (x.phone ? 1 : 0) + (x.email ? 1 : 0), 0);
+
+    async function enrichContacts() {
+      if (!currentJobId) { setStatus('Search for businesses first.'); return; }
+      setStatus('Starting deep AI research…');
+      const beforeData = await (await fetch(jobBizUrl())).json();
+      const before = contactPoints(beforeData.items || []);
+      const r = await (await fetch('/search_jobs/' + currentJobId + '/enrich', { method: 'POST' })).json();
+      if (r.queued === 0) {
+        setStatus(r.message || 'Nothing to enrich — no businesses are missing contacts.');
+        return;
+      }
+      setStatus(`Enriching <span class="count">${r.queued}</span> business(es) `
+        + `(web + their website)… please wait a moment.`);
+      let tries = 0;
+      const poll = async () => {
+        tries++;
+        const items = await loadBusinesses();           // re-renders the list
+        const added = contactPoints(items) - before;
+        if (added > 0) {
+          setStatus(`Added <span class="count">${added}</span> new contact(s). `
+            + `Look for the <span class="tag enriched">enriched</span> tags.`);
+          return;
+        }
+        if (tries >= 40) {   // enrichment does several web searches per business
+          setStatus('Enrichment finished — no new contacts found. '
+            + 'Some businesses simply don’t list a phone/email online.');
+          return;
+        }
+        setTimeout(poll, 5000);
+      };
+      setTimeout(poll, 5000);
+    }
+
+    // Set a follow-up reminder to call this business on a chosen date.
+    async function setReminder(b) {
+      const def = new Date(Date.now() + 2 * 86400000);   // default: 2 days out
+      const defStr = def.toISOString().slice(0, 10);      // yyyy-mm-dd
+      const dateStr = window.prompt(
+        `When should we call "${b.name}"?\n\nEnter a date (YYYY-MM-DD):`, defStr);
+      if (dateStr === null) { setStatus('Reminder cancelled.'); return; }
+      const note = window.prompt('Optional note (why / what to discuss):', '') || null;
+      const due = new Date(dateStr + 'T10:00:00');        // 10am local on that day
+      if (isNaN(due.getTime())) { setStatus('That date didn’t look right. Please try again.'); return; }
+      const res = await fetch('/reminders', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ business_id: b.id, due_at: due.toISOString(), note }),
+      });
+      if (!res.ok) { setStatus('Couldn’t set the reminder. Please try again.'); return; }
+      setStatus(`Reminder set to call <b>${escapeHtml(b.name)}</b> on ${due.toLocaleDateString()} `
+        + `— see all under <b>Reminders</b> (top right).`);
+      loadBusinesses();
+    }
+
+    function _dueLabel(dueIso) {
+      const due = new Date(dueIso);
+      const days = Math.ceil((due - new Date()) / 86400000);
+      if (days < 0) return { cls: 'overdue', tag: '<span class="due-tag over">overdue</span>' };
+      if (days <= 1) return { cls: '', tag: '<span class="due-tag soon">due soon</span>' };
+      return { cls: '', tag: '' };
+    }
+
+    async function loadReminders() {
+      $('remindersList').innerHTML = 'Loading…';
+      const d = await (await fetch('/reminders')).json();
+      const pending = d.items.filter(r => r.status !== 'cancelled');
+      if (!pending.length) {
+        $('remindersList').innerHTML =
+          '<p style="color:var(--muted)">No reminders yet. Use “Set reminder” on a business, '
+          + 'and one is added automatically when an owner agrees to a call.</p>';
+        return;
+      }
+      $('remindersList').innerHTML = '';
+      pending.forEach(r => {
+        const done = r.status === 'done';
+        const lbl = done ? { cls: 'done', tag: '' } : _dueLabel(r.due_at);
+        const when = new Date(r.due_at).toLocaleString([], {
+          weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+        const contact = r.contact ? ' · ' + escapeHtml(r.contact) : '';
+        const div = document.createElement('div');
+        div.className = 'mtg ' + lbl.cls;
+        div.innerHTML = `
+          <div class="when">${icon('phone')} ${escapeHtml(r.business_name || 'Business')}${lbl.tag}</div>
+          <div class="meta"><b>${when}</b>${r.channel ? ' · via ' + escapeHtml(r.channel) : ''}${contact}</div>
+          ${r.meeting_url ? `<div class="meta">${icon('link')} <a href="${escapeHtml(r.meeting_url)}" target="_blank" rel="noopener">${escapeHtml(r.meeting_url.replace(/^https?:\/\//, ''))}</a></div>` : ''}
+          ${r.note ? `<div class="meta" style="font-style:italic">${escapeHtml(r.note)}</div>` : ''}`;
+        if (r.meeting_url) {
+          const join = document.createElement('button');
+          join.className = 'donebtn'; join.innerHTML = icon('video') + 'Join';
+          join.onclick = () => window.open(r.meeting_url, '_blank', 'noopener');
+          div.appendChild(join);
+          const copy = document.createElement('button');
+          copy.className = 'donebtn'; copy.innerHTML = icon('link') + 'Copy link';
+          copy.onclick = async () => {
+            try { await navigator.clipboard.writeText(r.meeting_url); copy.innerHTML = icon('check') + 'Copied'; }
+            catch { copy.textContent = r.meeting_url; }
+          };
+          div.appendChild(copy);
+        }
+        const cal = document.createElement('button');
+        cal.className = 'donebtn'; cal.innerHTML = icon('calendar') + 'Add to calendar';
+        cal.onclick = () => window.open('/reminders/' + r.id + '/invite.ics', '_blank');
+        div.appendChild(cal);
+        if (r.google_calendar_url) {
+          const gcal = document.createElement('button');
+          gcal.className = 'donebtn'; gcal.innerHTML = icon('calendar') + 'Google Calendar';
+          gcal.onclick = () => window.open(r.google_calendar_url, '_blank', 'noopener');
+          div.appendChild(gcal);
+        }
+        if (isPhone(r.contact)) {
+          const call = document.createElement('button');
+          call.className = 'donebtn'; call.innerHTML = icon('phone') + 'Call now';
+          call.onclick = () => placeCall(r.contact);
+          div.appendChild(call);
+        }
+        if (!done) {
+          const dn = document.createElement('button');
+          dn.className = 'donebtn'; dn.innerHTML = icon('check') + 'Done';
+          dn.onclick = async () => {
+            await fetch('/reminders/' + r.id, {
+              method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ status: 'done' }) });
+            loadReminders();
+          };
+          div.appendChild(dn);
+        }
+        const del = document.createElement('button');
+        del.className = 'cancelbtn'; del.textContent = 'Delete';
+        del.onclick = async () => {
+          await fetch('/reminders/' + r.id, { method: 'DELETE' });
+          loadReminders();
+        };
+        div.appendChild(del);
+        $('remindersList').appendChild(div);
+      });
+    }
+    // --- Human-in-the-loop outreach drafts ------------------------------
+    async function refreshDraftsBadge() {
+      try {
+        const d = await (await fetch('/outreach/drafts')).json();
+        const n = d.total || 0;
+        const badge = $('draftsCount');
+        badge.textContent = n;
+        badge.style.display = n ? 'inline-block' : 'none';
+      } catch { /* not signed in yet */ }
+    }
+
+    async function loadDrafts() {
+      const list = $('draftsList');
+      list.innerHTML = 'Loading…';
+      const [d, m] = await Promise.all([
+        (await fetch('/outreach/drafts')).json(),
+        (await fetch('/outreach/mode')).json(),
+      ]);
+      $('outreachMode').value = m.mode;
+      if (!d.items.length) {
+        list.innerHTML = '<p style="color:var(--muted)">No drafts waiting. When the AI wants to '
+          + 'email a business (bulk outreach or a customer reply), the message appears here first.</p>';
+        refreshDraftsBadge();
+        return;
+      }
+      list.innerHTML = '';
+      d.items.forEach(dr => {
+        const div = document.createElement('div');
+        div.className = 'mtg';
+        const kind = dr.kind === 'reply' ? 'Reply' : 'Cold opening';
+        div.innerHTML = `
+          <div class="when">${icon('mail')} ${escapeHtml(dr.business_name)}
+            <span class="due-tag soon">${kind}</span></div>
+          <div class="meta">To: <b>${escapeHtml(dr.to_contact)}</b>
+            ${dr.subject ? ' · ' + escapeHtml(dr.subject) : ''}</div>`;
+        const ta = document.createElement('textarea');
+        ta.rows = 5; ta.value = dr.body;
+        ta.style.cssText = 'width:100%;margin:8px 0;font:inherit;font-size:12.5px;padding:8px';
+        div.appendChild(ta);
+        const approve = document.createElement('button');
+        approve.className = 'donebtn'; approve.innerHTML = icon('check') + 'Approve & send';
+        approve.onclick = async () => {
+          approve.disabled = true; approve.textContent = 'Sending…';
+          if (ta.value !== dr.body) {
+            await fetch('/outreach/drafts/' + dr.id, {
+              method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ body: ta.value }) });
+          }
+          const res = await fetch('/outreach/drafts/' + dr.id + '/approve', { method: 'POST' });
+          if (!res.ok) {
+            const e = await res.json().catch(() => ({}));
+            setStatus('Send failed: ' + escapeHtml(e.detail || res.status));
+            approve.disabled = false; approve.innerHTML = icon('check') + 'Approve & send';
+            return;
+          }
+          setStatus(`Sent to <b>${escapeHtml(dr.business_name)}</b>.`);
+          loadDrafts(); loadBusinesses();
+        };
+        div.appendChild(approve);
+        const discard = document.createElement('button');
+        discard.className = 'cancelbtn'; discard.textContent = 'Discard';
+        discard.onclick = async () => {
+          await fetch('/outreach/drafts/' + dr.id + '/discard', { method: 'POST' });
+          loadDrafts();
+        };
+        div.appendChild(discard);
+        list.appendChild(div);
+      });
+      refreshDraftsBadge();
+    }
+
+    function openDrafts() { $('draftsPanel').style.display = 'flex'; loadDrafts(); }
+
+    async function openAdmin() {
+      $('adminPanel').style.display = 'flex';
+      const body = $('adminBody');
+      body.innerHTML = 'Loading…';
+      const fdate = (s) => s
+        ? new Date(s).toLocaleString([], { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+        : '—';
+      try {
+        const [ov, us, se] = await Promise.all([
+          fetch('/admin/overview').then((r) => r.json()),
+          fetch('/admin/users').then((r) => r.json()),
+          fetch('/admin/searches?limit=100').then((r) => r.json()),
+        ]);
+        const tile = (n, l) => `<div class="adm-tile"><div class="n">${n}</div><div class="l">${l}</div></div>`;
+        const tiles = '<div class="adm-tiles">'
+          + tile(ov.tenants, 'Accounts') + tile(ov.users, 'Users') + tile(ov.businesses, 'Businesses')
+          + tile(ov.searches, 'Searches') + tile(ov.conversations, 'Conversations') + tile(ov.reminders, 'Reminders')
+          + '</div>';
+        const uRows = (us.items || []).map((u) => `<tr>
+          <td>${escapeHtml(u.email || '')}</td><td>${escapeHtml(u.name || '')}</td>
+          <td>${escapeHtml(u.company || '')}</td><td>${u.searches}</td>
+          <td>${u.login_count || 0}</td><td>${fdate(u.last_login)}</td><td>${fdate(u.joined)}</td></tr>`).join('');
+        const uTbl = `<div class="adm-sec">Users (${us.total})</div><div class="adm-wrap"><table class="adm-table">
+          <tr><th>Email</th><th>Name</th><th>Company</th><th>Searches</th><th>Logins</th><th>Last login</th><th>Joined</th></tr>
+          ${uRows}</table></div>`;
+        const sRows = (se.items || []).map((s) => `<tr>
+          <td>${escapeHtml(s.location || '')}</td><td>${(s.targeting || []).map(escapeHtml).join(', ')}</td>
+          <td>${s.results}</td><td>${escapeHtml(s.by || '—')}</td><td>${fdate(s.when)}</td></tr>`).join('');
+        const sTbl = `<div class="adm-sec">Recent searches (${se.total})</div><div class="adm-wrap"><table class="adm-table">
+          <tr><th>Location</th><th>Targeting</th><th>Results</th><th>By</th><th>When</th></tr>
+          ${sRows}</table></div>`;
+        body.innerHTML = tiles + uTbl + sTbl;
+      } catch {
+        body.innerHTML = 'Couldn’t load admin data.';
+      }
+    }
+
+    async function openAnalytics() {
+      $('analyticsPanel').style.display = 'flex';
+      $('analyticsBody').innerHTML = 'Loading…';
+      const d = await (await fetch('/analytics')).json();
+      const f = d.funnel, max = Math.max(f.discovered, 1);
+      const card = (label, val) => `
+        <div style="background:rgba(21,31,51,.5);border:1px solid var(--line);border-radius:12px;padding:12px 14px;flex:1;min-width:104px">
+          <div class="count" style="font-size:22px">${val}</div>
+          <div style="color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.5px">${label}</div>
+        </div>`;
+      const stage = (label, val, color) => `
+        <div style="margin:8px 0">
+          <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px">
+            <span>${label}</span><b style="color:${color}">${val}</b></div>
+          <div style="background:rgba(255,255,255,.06);border-radius:8px;height:16px;overflow:hidden">
+            <div style="height:100%;width:${Math.round(100 * val / max)}%;background:${color};border-radius:8px;transition:width .4s"></div>
+          </div>
+        </div>`;
+      $('analyticsBody').innerHTML = `
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:20px">
+          ${card('Businesses', d.businesses)}
+          ${card('Contactable', d.contactable)}
+          ${card('AI enriched', d.enriched)}
+          ${card('Conversations', d.conversations.total)}
+          ${card('Reminders', d.reminders.pending)}
+          ${card('Callback rate', d.conversion_rate + '%')}
+        </div>
+        <h3 style="margin:0 0 6px;font-size:14px">Outreach funnel</h3>
+        ${stage('Discovered', f.discovered, '#38bdf8')}
+        ${stage('Has contact', f.contactable, '#818cf8')}
+        ${stage('Contacted', f.contacted, '#a78bfa')}
+        ${stage('Interested', f.interested, '#fbbf24')}
+        ${stage('Callback set', f.callbacks, '#34d399')}`;
+    }
+
+    function openReminders() { $('remindersPanel').style.display = 'flex'; loadReminders(); }
+    function closeReminders() { $('remindersPanel').style.display = 'none'; }
+
+    // ---- AI outreach chat ----
+    let currentConv = null;
+
+    function renderChat(conv) {
+      currentConv = conv;
+      const log = $('chatLog');
+      log.innerHTML = '';
+      (conv.transcript || []).forEach(t => {
+        const b = document.createElement('div');
+        b.className = 'bubble ' + (t.role === 'assistant' ? 'ai' : 'them');
+        b.textContent = t.text;
+        log.appendChild(b);
+      });
+      if (conv.reminder_id) {
+        const banner = document.createElement('div');
+        banner.className = 'chatbanner';
+        banner.textContent = 'Call reminder set — see “Reminders”.';
+        log.appendChild(banner);
+      }
+      log.scrollTop = log.scrollHeight;
+    }
+
+    // Deliver the AI message. Email auto-sends if connected; WhatsApp opens with one tap.
+    async function openContactLink(id, channel) {
+      const w = window.open('', '_blank');   // reserve a tab synchronously (popup-safe)
+      setStatus('Sending via ' + channel + '…');
+      try {
+        const r = await fetch('/outreach/send/' + id + '?channel=' + channel, { method: 'POST' });
+        const d = await r.json().catch(() => ({}));
+        if (!r.ok) { if (w) w.close(); setStatus('Couldn’t send the message. Please try again.'); return; }
+        if (d.sent) {                        // email auto-sent
+          if (w) w.close();
+          setStatus('Email sent to the owner automatically.');
+          loadBusinesses();
+          return;
+        }
+        if (d.queued) {                      // review mode: draft awaits approval
+          if (w) w.close();
+          setStatus('Draft queued — review and approve it under <b>Drafts</b> (top right).');
+          refreshDraftsBadge();
+          return;
+        }
+        if (d.link) {                        // whatsapp tap-to-send, or mailto fallback
+          if (w) w.location.href = d.link; else window.location.href = d.link;
+          setStatus(channel === 'whatsapp'
+            ? 'Opening WhatsApp with your message — just press Send.'
+            : 'Opened your email app. Tip: connect your email (top-right) to send automatically.');
+        } else if (w) { w.close(); }
+      } catch {
+        if (w) w.close();
+        setStatus('Couldn’t send the message. Please try again.');
+      }
+    }
+
+    async function startOutreach(b) {
+      const channel = b.phone ? 'whatsapp' : (b.email ? 'email' : null);
+      if (!channel) {
+        setStatus('“' + escapeHtml(b.name) + '” has no phone/email — run “Enrich contacts” first.');
+        return;
+      }
+      $('chatTitle').innerHTML = icon('message') + escapeHtml(b.name) + ' · ' + channel;
+      $('chatLog').innerHTML = '<div class="bubble ai">Writing opening message…</div>';
+      $('chatPanel').style.display = 'flex';
+      const res = await fetch('/outreach/start', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ business_id: b.id, channel }),
+      });
+      if (!res.ok) { $('chatLog').innerHTML = '<div class="bubble ai">Sorry, I couldn’t start the conversation. Please try again.</div>'; return; }
+      renderChat(await res.json());
+    }
+
+    async function sendChatReply() {
+      const text = $('chatInput').value.trim();
+      if (!text || !currentConv) return;
+      $('chatInput').value = '';
+      // optimistic: show the owner's message immediately
+      currentConv.transcript.push({ role: 'business', text });
+      renderChat(currentConv);
+      const res = await fetch('/outreach/conversations/' + currentConv.id + '/reply', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: text }),
+      });
+      if (res.ok) { renderChat(await res.json()); if (currentConv.reminder_id) loadBusinesses(); }
+    }
+
+    // ---- Auth gate ----
+    function showApp(user) {
+      $('authPanel').style.display = 'none';
+      if (user && user.name) {
+        $('userLabel').textContent = `${user.name} · ${user.company_name || ''}`;
+        $('userBox').style.display = 'flex';
+        if (user.email_connected) {
+          $('connectEmailBtn').innerHTML = icon('check') + 'Email connected';
+        }
+        $('adminToggle').style.display = user.is_admin ? 'inline-flex' : 'none';
+      }
+    }
+
+    async function connectEmail() {
+      $('emErr').textContent = 'Verifying…';
+      const res = await fetch('/auth/connect_email', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: $('emEmail').value.trim(), app_password: $('emPass').value }),
+      });
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok) { $('emErr').textContent = errMsg(d); return; }
+      $('connectEmailBtn').innerHTML = icon('check') + 'Email connected';
+      $('emailPanel').style.display = 'none';
+      setStatus('Email connected — the “Email” button now sends automatically.');
+    }
+    function showAuth() { $('authPanel').style.display = 'flex'; }
+    function showLogin(on) {
+      $('loginForm').style.display = on ? 'block' : 'none';
+      $('registerForm').style.display = on ? 'none' : 'block';
+    }
+
+    async function doRegister() {
+      $('regErr').textContent = '';
+      const body = {
+        name: $('regName').value.trim(), company_name: $('regCompany').value.trim(),
+        services: $('regServices').value.trim(), email: $('regEmail').value.trim(),
+        password: $('regPassword').value,
+      };
+      const res = await _fetch('/auth/register', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      if (!res.ok) { $('regErr').textContent = errMsg(data); return; }
+      localStorage.setItem(TOKEN_KEY, data.token);
+      showApp(data.user);
+    }
+
+    async function doLogin() {
+      $('logErr').textContent = '';
+      const res = await _fetch('/auth/login', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: $('logEmail').value.trim(), password: $('logPassword').value }),
+      });
+      const data = await res.json();
+      if (!res.ok) { $('logErr').textContent = errMsg(data); return; }
+      localStorage.setItem(TOKEN_KEY, data.token);
+      showApp(data.user);
+    }
+
+    function logout() { localStorage.removeItem(TOKEN_KEY); location.reload(); }
+    function skip() { $('authPanel').style.display = 'none'; }
+
+    async function initAuth() {
+      const t = getToken();
+      if (!t) { showAuth(); return; }
+      const res = await fetch('/auth/me');   // wrapper adds the token
+      if (res.ok) showApp(await res.json());
+      else { localStorage.removeItem(TOKEN_KEY); showAuth(); }
+    }
+
+    $('registerBtn').addEventListener('click', doRegister);
+    $('loginBtn').addEventListener('click', doLogin);
+    $('logoutBtn').addEventListener('click', logout);
+    $('connectEmailBtn').addEventListener('click', () => { $('emailPanel').style.display = 'flex'; });
+    $('pollInboxBtn').addEventListener('click', async () => {
+      setStatus('Checking your inbox for replies…');
+      try {
+        await fetch('/outreach/poll_inbox', { method: 'POST' });
+        setStatus('Inbox check started — the AI will reply to any new customer messages automatically.');
+      } catch { setStatus('Couldn’t check the inbox right now. Please try again.'); }
+    });
+    $('emailClose').addEventListener('click', () => { $('emailPanel').style.display = 'none'; });
+    $('emConnectBtn').addEventListener('click', connectEmail);
+    $('toLogin').addEventListener('click', () => showLogin(true));
+    $('toRegister').addEventListener('click', () => showLogin(false));
+    $('skipAuth').addEventListener('click', skip);
+    $('skipAuth2').addEventListener('click', skip);
+
+    // ---- WhatsApp send queue (tap-through) ----
+    let waQueue = [], waIdx = 0;
+
+    async function openWaQueue() {
+      if (!currentJobId) { setStatus('Search for businesses first.'); return; }
+      setStatus('Building WhatsApp queue…');
+      const r = await fetch('/search_jobs/' + currentJobId + '/whatsapp_queue');
+      const d = await r.json().catch(() => ({ items: [] }));
+      if (!d.items || !d.items.length) {
+        setStatus('No WhatsApp-able (mobile) businesses here. Try “Enrich contacts”, or a city search.');
+        return;
+      }
+      waQueue = d.items; waIdx = 0;
+      $('waPanel').style.display = 'flex';
+      renderWaStep();
+      setStatus('');
+    }
+
+    function renderWaStep() {
+      if (waIdx >= waQueue.length) {
+        $('waBody').innerHTML = `<div class="chatbanner">Done — you went through all ${waQueue.length} WhatsApp messages.</div>`;
+        return;
+      }
+      const q = waQueue[waIdx];
+      $('waBody').innerHTML = `
+        <div style="color:var(--muted);font-size:12px">Message ${waIdx + 1} of ${waQueue.length} · ${escapeHtml(q.to)}</div>
+        <div style="font-size:16px;font-weight:700;margin:6px 0">${escapeHtml(q.name)}</div>
+        <div class="bubble ai" style="max-width:100%">${escapeHtml(q.message)}</div>
+        <div style="display:flex;gap:8px;margin-top:14px">
+          <button onclick="waSend()">${icon('send')}Send on WhatsApp</button>
+          <button class="ghost" onclick="waNext()" style="width:auto;padding:9px 16px">Next</button>
+        </div>`;
+    }
+    function waSend() { window.open(waQueue[waIdx].link, '_blank'); }
+    function waNext() { waIdx++; renderWaStep(); }
+
+    async function bulkOutreach() {
+      if (!currentJobId) { setStatus('Search for businesses first.'); return; }
+      // Confirmation gate: the AI only reaches out after the owner explicitly confirms.
+      if (!confirm('Reach out to all contactable businesses in this search?\n\n'
+          + 'A personalized message is sent to each (emails auto-send if your '
+          + 'email is connected; WhatsApp ones are drafted for one-tap send).')) {
+        return;
+      }
+      setStatus('Starting outreach…');
+      const r = await (await fetch('/search_jobs/' + currentJobId + '/outreach_all', { method: 'POST' })).json();
+      if (r.queued === 0) { setStatus(r.message || 'Nothing to message.'); return; }
+      const mode = !r.email_connected
+        ? 'preparing drafts (connect your email top-right to auto-send the emails)'
+        : (r.outreach_mode === 'review'
+          ? 'writing the emails into <b>Drafts</b> for your approval, plus WhatsApp tap-to-send drafts'
+          : 'auto-<b>sending emails</b> to those with an email, and preparing WhatsApp drafts for the rest');
+      setStatus(`Reaching out to <span class="count">${r.queued}</span> businesses — `
+        + `${mode}. Running in the background…`);
+      setTimeout(loadBusinesses, 10000);
+      setTimeout(refreshDraftsBadge, 10000);
+    }
+
+    $('onlyContact').addEventListener('change', () => { if (currentJobId) loadBusinesses(); });
+    $('searchForm').addEventListener('submit', startSearch);
+    $('gpsBtn').addEventListener('click', useMyLocation);
+    $('importBtn').addEventListener('click', uploadCsv);
+    $('enrichBtn').addEventListener('click', enrichContacts);
+    $('bulkBtn').addEventListener('click', bulkOutreach);
+    $('waQueueBtn').addEventListener('click', openWaQueue);
+    $('waClose').addEventListener('click', () => { $('waPanel').style.display = 'none'; });
+    $('remindersToggle').addEventListener('click', openReminders);
+    $('draftsToggle').addEventListener('click', openDrafts);
+    $('draftsClose').addEventListener('click', () => { $('draftsPanel').style.display = 'none'; });
+    $('outreachMode').addEventListener('change', async (e) => {
+      await fetch('/outreach/mode', {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mode: e.target.value }) });
+      setStatus(e.target.value === 'review'
+        ? 'Review mode: the AI queues every message here for your approval.'
+        : 'Autonomous mode: the AI sends emails and replies directly.');
+    });
+    refreshDraftsBadge();
+    setInterval(refreshDraftsBadge, 60000);  // keep the pending-drafts badge fresh
+    $('remindersClose').addEventListener('click', closeReminders);
+    $('analyticsToggle').addEventListener('click', openAnalytics);
+    $('analyticsClose').addEventListener('click', () => { $('analyticsPanel').style.display = 'none'; });
+    $('adminToggle').addEventListener('click', openAdmin);
+    $('adminClose').addEventListener('click', () => { $('adminPanel').style.display = 'none'; });
+    $('chatClose').addEventListener('click', () => { $('chatPanel').style.display = 'none'; });
+    $('chatSend').addEventListener('click', sendChatReply);
+    $('chatInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') sendChatReply(); });
+    initAuth();
+    $('remindersPanel').addEventListener('click', (e) => {
+      if (e.target.id === 'remindersPanel') closeReminders();  // click backdrop to close
+    });
+    initMap();
+  </script>
+</body>
+</html>

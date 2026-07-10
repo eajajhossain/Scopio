@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header>
+    <h1>🔭 Scopio Lead Finder</h1>
+    <div class="sub">Find business leads → send to your Scopio account</div>
+  </header>
+
+  <!-- Consent gate (first run) -->
+  <div id="consent" class="pad hidden">
+    <p>This extension will:</p>
+    <ul class="muted" style="padding-left:18px;line-height:1.6">
+      <li>Run a business search in <b>your Scopio account</b> (free — OpenStreetMap + Geoapify).</li>
+      <li>Talk only to the <b>Scopio server URL</b> you set.</li>
+      <li>Store your settings <b>locally</b> in this browser only.</li>
+    </ul>
+    <p class="muted">No API key needed. No background tracking — it only acts when you click “Find leads”.</p>
+    <button id="allowBtn">Allow</button>
+    <button id="denyBtn" class="ghost">Deny</button>
+  </div>
+
+  <!-- Setup needed -->
+  <div id="setup" class="pad hidden">
+    <p class="muted">Connect your Scopio account to start (no API key required).</p>
+    <button id="openOptions">Open settings</button>
+  </div>
+
+  <!-- Main -->
+  <div id="main" class="pad hidden">
+    <label>Address / area</label>
+    <input id="query" placeholder="e.g. Bandra, Mumbai" />
+    <label>Radius (m)</label>
+    <input id="radius" type="number" value="2000" min="100" max="20000" />
+    <button id="findBtn">🔎 Find leads (free)</button>
+    <div class="err" id="err"></div>
+    <div class="ok" id="sendMsg"></div>
+    <div class="list" id="list"></div>
+    <button id="openDash" class="ghost hidden">Open Scopio dashboard</button>
+  </div>
+
+  <script src="common.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>
