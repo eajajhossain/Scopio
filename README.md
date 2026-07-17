@@ -81,7 +81,6 @@ what to fill in for the full experience:
 | `GEOAPIFY_API_KEY` | Optional 2nd business-discovery source | https://myprojects.geoapify.com |
 | `BRAVE_API_KEY` | Optional: find missing business websites | https://brave.com/search/api |
 | `ANTHROPIC_API_KEY` | Optional paid upgrade (higher-accuracy enrichment) | https://console.anthropic.com |
-| `ADMIN_EMAIL` + `ADMIN_PASSWORD` | Your **admin login** (see step 5) | you choose these |
 | `SECRET_KEY` | Signing key — **required for production** | `python -c "import secrets; print(secrets.token_urlsafe(48))"` |
 
 `.env` is **gitignored** — your keys and admin password never get committed or published.
