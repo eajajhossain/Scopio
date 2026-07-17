@@ -16,11 +16,13 @@ from app.models.area_cache import AreaCache
 from app.models.business import Business
 from app.models.search_job import SearchJob
 from app.models.search_job_business import SearchJobBusiness
+from app.models.tenant import Tenant
 from app.services.discovery.dedup import area_geohash, merge_by_dedup_key
 from app.services.discovery.geoapify import GeoapifyClient
 from app.services.discovery.geocoder import GeocoderPort, NominatimGeocoder
 from app.services.discovery.normalizer import normalize_many
 from app.services.discovery.overpass import OverpassClient, PlacesPort
+from app.services.targeting import derive_target_profile
 
 logger = logging.getLogger(__name__)
 
@@ -189,6 +191,18 @@ async def run_discovery(
         return
 
     # Context-aware targeting: only search the business types that suit the seller.
+    # Derived HERE (not in the API handler) so the user's click returns instantly;
+    # repeat searches hit the in-process profile cache and skip the LLM entirely.
+    if job.target_profile is None:
+        tenant = (
+            await session.execute(select(Tenant).where(Tenant.id == job.tenant_id))
+        ).scalar_one_or_none()
+        profile = await derive_target_profile(
+            tenant.services if tenant else "", tenant.company_name if tenant else None
+        )
+        if not profile.is_empty:
+            job.target_profile = profile.to_dict()
+            await session.commit()
     osm_filters = (job.target_profile or {}).get("osm_filters") or None
     # Fold the target filter into the cache key so two sellers searching the same area
     # with different targets don't read each other's cached results.

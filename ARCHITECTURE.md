@@ -221,6 +221,24 @@ social page, or not at all. The engine's intelligence is in aggregation + extrac
 - Full **conversation transcripts**, call recordings, outcomes, and timestamps.
 - Dashboard: funnel metrics, cost per lead, callbacks set / callback rate, channel performance.
 
+### 3.7 Ask Scopio — the agentic assistant over the leads
+**Job:** Let the user ask anything about their discovered businesses in plain language.
+
+- The **LLM is the brain, not the answer source**: it *plans* each message (list/filter/export vs.
+  answer a question), then answers grounded in the **leads database** — and calls the **web tool
+  (Tavily)** when the DB can't satisfy the question (reviews, ratings, news). It never fabricates.
+- Lists/filters match the **precise** business type (from raw OSM tags, not just the broad bucket),
+  grouped into clickable categories; exports the whole result set to Excel/CSV with clickable Google
+  Maps links. (See `app/services/assistant.py`, `app/api/assistant.py`.)
+
+### 3.8 Admin control — "Run the platform"
+**Job:** Give the deployer full control of their own instance.
+
+- Cross-tenant dashboard (totals, users, searches) via an RLS-bypassing superuser connection, gated
+  by `require_admin`; **plus control actions** — suspend / reactivate any account (admins shielded).
+- The owner login can be bootstrapped from `.env` (`ADMIN_EMAIL`/`ADMIN_PASSWORD`, hashed at rest).
+  Each self-hosted deployment is independent; its admin controls only that instance.
+
 ---
 
 ## 4. Data Flow (the happy path)

@@ -62,6 +62,23 @@ def test_fallback_respond_sets_reminder_on_yes():
     assert r["callback_days"] == 1   # "tomorrow" -> 1 day out
 
 
+def test_fallback_respond_does_not_book_on_soft_ok():
+    # A soft "ok"/"sure" is NOT permission to book — the AI asks to schedule first.
+    for reply in ("ok", "sure, tell me more", "yes, sounds interesting — what do you do?"):
+        r = agent._fallback_respond([_t("assistant", "Want a quick call?"),
+                                     _t("business", reply)])
+        assert r["set_reminder"] is False, reply
+        assert r["intent"] in ("interested", "question")
+
+
+def test_fallback_respond_books_only_on_explicit_call_agreement():
+    r = agent._fallback_respond([_t("assistant", "Shall I set up a quick call?"),
+                                 _t("business", "Yes, let's schedule a call for tomorrow")])
+    assert r["set_reminder"] is True
+    assert r["intent"] == "callback"
+    assert r["callback_days"] == 1
+
+
 def test_fallback_respond_backs_off_on_no():
     r = agent._fallback_respond([_t("assistant", "Want a call?"), _t("business", "No thanks, not interested")])
     assert r["set_reminder"] is False

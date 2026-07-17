@@ -42,12 +42,14 @@ CREATE TABLE app_user (
     role          user_role NOT NULL DEFAULT 'owner',
     last_login_at TIMESTAMPTZ,
     login_count   INTEGER NOT NULL DEFAULT 0,
+    suspended_at  TIMESTAMPTZ,                       -- set by an admin to block login; null = active
     created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at    TIMESTAMPTZ NOT NULL DEFAULT now()
 );
--- Idempotent for dev DBs created before login tracking existed.
+-- Idempotent for dev DBs created before these columns existed.
 ALTER TABLE app_user ADD COLUMN IF NOT EXISTS last_login_at TIMESTAMPTZ;
 ALTER TABLE app_user ADD COLUMN IF NOT EXISTS login_count INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE app_user ADD COLUMN IF NOT EXISTS suspended_at TIMESTAMPTZ;
 
 -- SEARCH JOB ----------------------------------------------------------
 CREATE TABLE search_job (
@@ -139,6 +141,7 @@ CREATE TABLE conversation (
     channel      TEXT NOT NULL,                     -- email | whatsapp | sms
     status       conversation_status NOT NULL DEFAULT 'active',
     transcript   JSONB NOT NULL DEFAULT '[]',       -- [{role, text, ts}]
+    memory       JSONB NOT NULL DEFAULT '{}',       -- working memory: {"facts": [...]}
     reminder_id  UUID REFERENCES reminder(id),
     created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at   TIMESTAMPTZ NOT NULL DEFAULT now()

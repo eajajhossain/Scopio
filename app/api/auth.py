@@ -20,11 +20,13 @@ from app.models.user import AppUser
 from app.schemas.auth import (
     AuthOut,
     ConnectEmailIn,
+    EmailProviderOut,
     LoginIn,
     ProfileIn,
     RegisterIn,
     UserOut,
 )
+from app.services.outreach import email_providers
 from app.services.outreach.channels import verify_smtp
 
 logger = logging.getLogger(__name__)
@@ -78,6 +80,11 @@ async def login(body: LoginIn, db: AsyncSession = Depends(get_raw_db)):
     ).scalar_one_or_none()
     if user is None or not verify_password(body.password, user.password_hash):
         raise HTTPException(status_code=401, detail="Invalid email or password.")
+    if user.suspended_at is not None:
+        raise HTTPException(
+            status_code=403,
+            detail="This account has been suspended. Contact the administrator.",
+        )
     tenant = (
         await db.execute(select(Tenant).where(Tenant.id == user.tenant_id))
     ).scalar_one()
@@ -121,6 +128,23 @@ async def update_profile(
     return _user_out(user, tenant)
 
 
+@router.get("/email_provider", response_model=EmailProviderOut)
+async def email_provider(email: str):
+    """Look up SMTP settings + app-password guidance for an email address.
+
+    The connect-email UI calls this as the user types, so it can show the right
+    steps and a one-click link to that provider's app-password page.
+    """
+    provider = email_providers.detect(email)
+    if provider is None:
+        return EmailProviderOut(detected=False)
+    return EmailProviderOut(
+        detected=True, name=provider.name,
+        smtp_host=provider.smtp_host, smtp_port=provider.smtp_port,
+        app_password_url=provider.app_password_url, note=provider.note,
+    )
+
+
 @router.post("/connect_email", response_model=UserOut,
              dependencies=[Depends(rate_limit("connect_email"))])
 async def connect_email(
@@ -128,19 +152,33 @@ async def connect_email(
     ident: Identity = Depends(get_identity),
     db: AsyncSession = Depends(get_raw_db),
 ):
-    """Validate SMTP credentials (e.g. Gmail app password) and store them for auto-send."""
+    """Validate SMTP credentials (e.g. Gmail app password) and store them for auto-send.
+
+    The user only needs to type their email + app password — the SMTP host/port are
+    auto-derived from the address's provider (host/port in the body are an optional
+    Advanced override for custom domains / self-hosted mail).
+    """
+    email = body.email.strip()
     # Gmail shows app passwords as "abcd efgh ijkl mnop" — pasted spaces break login.
     app_password = body.app_password.replace(" ", "")
-    try:
-        await verify_smtp(host=body.host, port=body.port,
-                          sender=body.email.strip(), password=app_password)
-    except Exception as exc:  # noqa: BLE001
-        # Keep the raw SMTP error out of the UI; give actionable guidance instead.
-        logger.warning("SMTP verification failed for %s: %s", body.email, exc)
+    host, port = email_providers.resolve(email, body.host, body.port)
+    if not host or not port:
         raise HTTPException(
             status_code=400,
-            detail="Couldn’t connect to your email. Double-check the address and password. "
-                   "For Gmail, enable 2-Step Verification and use a 16-character App Password.",
+            detail="We couldn’t recognize your email provider. Open Advanced settings "
+                   "and enter your outgoing mail server (SMTP host) and port.",
+        )
+    try:
+        await verify_smtp(host=host, port=port, sender=email, password=app_password)
+    except Exception as exc:  # noqa: BLE001
+        # Keep the raw SMTP error out of the UI; give actionable, provider-aware guidance.
+        logger.warning("SMTP verification failed for %s: %s", email, exc)
+        provider = email_providers.detect(email)
+        hint = (f"For {provider.name}: {provider.note}" if provider
+                else "Use an app password from your email provider — not your normal password.")
+        raise HTTPException(
+            status_code=400,
+            detail=f"Couldn’t connect to your email. Double-check the address and password. {hint}",
         ) from exc
     user = (
         await db.execute(select(AppUser).where(AppUser.id == ident.user_id))
@@ -148,9 +186,9 @@ async def connect_email(
     if user is None:
         raise HTTPException(status_code=404, detail="user not found")
     tenant = (await db.execute(select(Tenant).where(Tenant.id == user.tenant_id))).scalar_one()
-    tenant.smtp_email = body.email.strip()
+    tenant.smtp_email = email
     tenant.smtp_password = encrypt_secret(app_password)  # encrypted at rest
-    tenant.smtp_host = body.host
-    tenant.smtp_port = body.port
+    tenant.smtp_host = host
+    tenant.smtp_port = port
     await db.commit()
     return _user_out(user, tenant)

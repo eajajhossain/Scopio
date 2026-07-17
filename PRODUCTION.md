@@ -20,6 +20,9 @@ docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
 Required env in production (the app refuses to start without a real `SECRET_KEY`):
 `ENVIRONMENT=production`, `SECRET_KEY`, `POSTGRES_PASSWORD`, `APP_RLS_PASSWORD`.
 
+Admin login: set `ADMIN_EMAIL` + `ADMIN_PASSWORD` (bootstraps/keeps your owner account in sync on
+startup, password hashed at rest) and/or `ADMIN_EMAILS` (allow-list). Use a strong password.
+
 ## ✅ What's already done
 
 - **Multi-tenant isolation** via Postgres Row-Level Security, enforced through a
@@ -46,6 +49,14 @@ Required env in production (the app refuses to start without a real `SECRET_KEY`
 - **White-labeled UI**: no internal provider names (e.g. the LLM provider), raw error traces, or
   HTTP status codes are ever surfaced to end users; failures show friendly messages and are logged
   server-side only.
+- **Admin control**: owner-only cross-tenant dashboard with the power to **suspend / reactivate
+  any account** (admin accounts shielded from lockout); the owner login can be bootstrapped from
+  `.env` (`ADMIN_EMAIL`/`ADMIN_PASSWORD`, hashed at rest).
+- **Ask Scopio (agentic assistant)**: answers any question about the leads — the LLM plans, pulls
+  answers from the database, and falls back to the **Tavily web tool** when needed; lists/filters by
+  precise business type and exports the full set to Excel/CSV with clickable Google Maps links.
+- **Easy email onboarding**: SMTP provider auto-detected from the address (Gmail/Outlook/Yahoo/
+  iCloud/Zoho…); the user pastes only an app password, stored **encrypted at rest** (Fernet).
 - **Tests + CI**: pytest suite + ruff lint, run on every push (`.github/workflows/ci.yml`).
 - **Production compose**: multiple workers, no source mount, restart policy, secrets from env.
 

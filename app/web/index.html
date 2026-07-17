@@ -391,6 +391,7 @@
         <button class="ghost" id="pollInboxBtn" data-ico="message" title="Check for customer replies now and let the AI answer them">Check replies</button>
         <button class="ghost" id="logoutBtn">Sign out</button>
       </div>
+      <button class="ghost" id="assistantToggle" data-ico="spark" title="Tell the AI what you want with your leads — in your own words">Ask AI</button>
       <button class="ghost" id="draftsToggle" data-ico="mail">Drafts<span id="draftsCount" style="display:none;margin-left:6px;background:var(--accent,#2563eb);color:#fff;border-radius:999px;padding:1px 7px;font-size:11px"></span></button>
       <button class="ghost" id="analyticsToggle" data-ico="chart">Analytics</button>
       <button class="ghost" id="remindersToggle" data-ico="clock">Reminders</button>
@@ -486,15 +487,54 @@
     <div class="card" style="background:var(--panel);border:1px solid var(--line);border-radius:12px;width:min(440px,94vw);padding:24px">
       <button class="closebtn" id="emailClose">Close</button>
       <h2 style="margin:0 0 4px" data-ico="mail">Connect your email</h2>
-      <div style="font-size:12px;color:var(--muted);margin-bottom:14px">
-        Lets Scopio send emails automatically on your behalf. For Gmail: turn on 2-Step
-        Verification, then create an <b>App Password</b> (Google Account → Security → App passwords)
-        and paste it below — not your normal password.
+      <div style="font-size:12px;color:var(--muted);margin-bottom:12px">
+        Connect your email so Scopio can send outreach automatically as you. Two quick steps:
+        enter your email, then paste an <b>app password</b>.
       </div>
+
+      <details style="margin-bottom:14px;font-size:12.5px;background:rgba(148,163,184,.08);
+               border:1px solid var(--line);border-radius:10px;padding:8px 12px">
+        <summary style="cursor:pointer;color:var(--text);font-weight:600">
+          What's an app password? (not my normal password)</summary>
+        <div style="color:var(--muted);margin-top:8px;line-height:1.65">
+          An <b>app password</b> is a one-time code your email provider gives you to let a
+          single app send mail for you — it's <b>not</b> your normal login password.
+          <br><br>
+          • It looks like 16 letters, e.g. <code>abcd efgh ijkl mnop</code>.<br>
+          • Scopio uses it <b>only to send your emails</b> — it never sees your real password.<br>
+          • You can delete it anytime from your email settings; your account stays safe.<br><br>
+          Type your email below and we'll show you the button to create one.
+        </div>
+      </details>
+
       <label>Your email</label>
-      <input id="emEmail" type="email" placeholder="you@gmail.com" />
+      <input id="emEmail" type="email" placeholder="you@gmail.com" autocomplete="username" />
+
+      <!-- Provider-aware guidance appears here once we recognize the address -->
+      <div id="emProvider" style="display:none;font-size:12.5px;margin:10px 0;padding:10px 12px;
+           background:rgba(12,74,110,.3);border:1px solid rgba(56,189,248,.28);border-radius:10px">
+        <div id="emProviderText" style="color:var(--text)"></div>
+        <a id="emAppPwLink" href="#" target="_blank" rel="noopener"
+           style="display:inline-flex;align-items:center;gap:6px;margin-top:8px;font-weight:600">
+           Create an app password →</a>
+      </div>
+
       <label>App password</label>
-      <input id="emPass" type="password" placeholder="16-character app password" />
+      <input id="emPass" type="password" placeholder="paste your app password" autocomplete="off" />
+
+      <details id="emAdvanced" style="margin:10px 0">
+        <summary style="cursor:pointer;color:var(--muted);font-size:12.5px">Advanced — custom mail server</summary>
+        <div style="display:flex;gap:8px;margin-top:8px">
+          <div style="flex:2"><label>SMTP host</label>
+            <input id="emHost" placeholder="smtp.yourdomain.com" /></div>
+          <div style="flex:1"><label>Port</label>
+            <input id="emPort" type="number" placeholder="587" /></div>
+        </div>
+        <div style="font-size:11.5px;color:var(--muted);margin-top:4px">
+          Only needed for a custom domain / Google Workspace / self-hosted mail we can't auto-detect.
+        </div>
+      </details>
+
       <button id="emConnectBtn">Connect &amp; verify</button>
       <div class="err" id="emErr" style="color:#fca5a5;font-size:13px;min-height:16px;margin-top:6px"></div>
     </div>
@@ -523,6 +563,23 @@
         Tap <b>Send on WhatsApp</b> → press send in WhatsApp → <b>Next</b>. (WhatsApp requires the tap — this is the fastest legal way.)
       </div>
       <div id="waBody" style="margin-top:16px"></div>
+    </div>
+  </div>
+
+  <div id="assistantPanel" style="position:fixed;inset:0;background:rgba(2,6,23,.7);display:none;align-items:center;justify-content:center;z-index:1100">
+    <div class="card" style="width:min(880px,96vw);height:min(700px,90vh);display:flex;flex-direction:column;padding:22px">
+      <button class="closebtn" id="assistantClose">Close</button>
+      <h2 style="margin:0 0 2px" data-ico="spark">Ask Scopio</h2>
+      <p style="color:var(--muted);font-size:12.5px;margin:0">
+        Your AI helper — it knows your business. Ask for lead lists
+        (<i>“only the cafes with no website”</i>), files (<i>“make an Excel with phone,
+        email and a Google link”</i>), or plain advice (<i>“how do I pitch a bakery?”</i>).</p>
+      <div id="aiLog" style="flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:8px;margin:12px 0;min-height:0"></div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <input id="aiCmd" placeholder="Ask anything about your leads or your business…" style="flex:1;margin:0" />
+        <button id="aiRun" data-ico="send" style="width:auto;margin:0;flex:none">Send</button>
+      </div>
+      <span id="aiStatus" style="font-size:12px;color:var(--muted);min-height:16px;margin-top:4px"></span>
     </div>
   </div>
 
@@ -616,6 +673,7 @@
       moon:   '<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"/>',
       sun:    '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
       dot:    '<circle cx="12" cy="12" r="4"/>',
+      spark:  '<path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9Z"/><path d="M19 15l.9 2.1L22 18l-2.1.9L19 21l-.9-2.1L16 18l2.1-.9Z"/>',
     };
     function icon(name) {
       return `<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">${ICON[name] || ''}</svg>`;
@@ -815,6 +873,7 @@
       clearTimeout(pollTimer);
       const res = await fetch('/search_jobs/' + currentJobId);
       const job = await res.json();
+      showTargetChip(job);   // targeting is derived in the worker — appears mid-run
       const labels = {
         pending: 'Getting ready…', geocoding: 'Pinpointing the location…',
         querying: 'Searching for businesses…', enriching: 'Finding contact details…',
@@ -835,7 +894,7 @@
         $('goBtn').disabled = false;
       } else {
         setStatus('<b>' + (labels[job.status] || 'Working…') + '</b>');
-        pollTimer = setTimeout(poll, 1500);
+        pollTimer = setTimeout(poll, 1000);
       }
     }
 
@@ -1200,12 +1259,24 @@
           + tile(ov.tenants, 'Accounts') + tile(ov.users, 'Users') + tile(ov.businesses, 'Businesses')
           + tile(ov.searches, 'Searches') + tile(ov.conversations, 'Conversations') + tile(ov.reminders, 'Reminders')
           + '</div>';
-        const uRows = (us.items || []).map((u) => `<tr>
+        const uRows = (us.items || []).map((u) => {
+          const status = u.suspended
+            ? '<span style="color:#fca5a5">Suspended</span>'
+            : '<span style="color:#4ade80">Active</span>';
+          let action = '<span style="color:var(--muted)">admin</span>';
+          if (u.can_moderate) {
+            action = u.suspended
+              ? `<button class="ghost mini adm-act" data-act="reactivate" data-id="${u.id}" style="width:auto;padding:3px 10px">Reactivate</button>`
+              : `<button class="ghost mini adm-act" data-act="suspend" data-id="${u.id}" style="width:auto;padding:3px 10px;color:#fca5a5">Suspend</button>`;
+          }
+          return `<tr>
           <td>${escapeHtml(u.email || '')}</td><td>${escapeHtml(u.name || '')}</td>
           <td>${escapeHtml(u.company || '')}</td><td>${u.searches}</td>
-          <td>${u.login_count || 0}</td><td>${fdate(u.last_login)}</td><td>${fdate(u.joined)}</td></tr>`).join('');
+          <td>${u.login_count || 0}</td><td>${fdate(u.last_login)}</td>
+          <td>${status}</td><td>${action}</td></tr>`;
+        }).join('');
         const uTbl = `<div class="adm-sec">Users (${us.total})</div><div class="adm-wrap"><table class="adm-table">
-          <tr><th>Email</th><th>Name</th><th>Company</th><th>Searches</th><th>Logins</th><th>Last login</th><th>Joined</th></tr>
+          <tr><th>Email</th><th>Name</th><th>Company</th><th>Searches</th><th>Logins</th><th>Last login</th><th>Status</th><th></th></tr>
           ${uRows}</table></div>`;
         const sRows = (se.items || []).map((s) => `<tr>
           <td>${escapeHtml(s.location || '')}</td><td>${(s.targeting || []).map(escapeHtml).join(', ')}</td>
@@ -1214,6 +1285,16 @@
           <tr><th>Location</th><th>Targeting</th><th>Results</th><th>By</th><th>When</th></tr>
           ${sRows}</table></div>`;
         body.innerHTML = tiles + uTbl + sTbl;
+        // Wire suspend/reactivate buttons (event delegation on the freshly-built table).
+        body.querySelectorAll('.adm-act').forEach((btn) => {
+          btn.addEventListener('click', async () => {
+            const act = btn.dataset.act;
+            if (act === 'suspend' && !confirm('Suspend this account? They will be blocked from logging in.')) return;
+            btn.disabled = true;
+            const r = await fetch(`/admin/users/${btn.dataset.id}/${act}`, { method: 'POST' });
+            if (r.ok) openAdmin(); else { btn.disabled = false; alert('Action failed.'); }
+          });
+        });
       } catch {
         body.innerHTML = 'Couldn’t load admin data.';
       }
@@ -1355,17 +1436,60 @@
       }
     }
 
+    // Detect the email provider as the user types → show tailored steps + a direct
+    // link to that provider's app-password page. Debounced; falls back to Advanced.
+    let emProviderTimer = null;
+    function scheduleProviderLookup() {
+      clearTimeout(emProviderTimer);
+      emProviderTimer = setTimeout(lookupEmailProvider, 400);
+    }
+    async function lookupEmailProvider() {
+      const email = $('emEmail').value.trim();
+      const box = $('emProvider');
+      if (!email.includes('@') || email.split('@')[1].length < 3) { box.style.display = 'none'; return; }
+      try {
+        const d = await (await fetch('/auth/email_provider?email=' + encodeURIComponent(email))).json();
+        if (d.detected) {
+          $('emProviderText').innerHTML = `<b>${escapeHtml(d.name)}</b> detected — ${escapeHtml(d.note)}`;
+          $('emAppPwLink').href = d.app_password_url;
+          $('emAppPwLink').style.display = 'inline-flex';
+          box.style.display = 'block';
+          $('emAdvanced').open = false;
+          $('emPass').placeholder = d.name === 'Gmail' ? '16-character app password' : 'paste your app password';
+        } else {
+          $('emProviderText').innerHTML = "We don't recognize this provider — open <b>Advanced</b> below "
+            + 'and enter your outgoing mail server (SMTP host + port).';
+          $('emAppPwLink').style.display = 'none';
+          box.style.display = 'block';
+          $('emAdvanced').open = true;
+        }
+      } catch { box.style.display = 'none'; }
+    }
+
     async function connectEmail() {
+      const email = $('emEmail').value.trim();
+      if (!email.includes('@')) { $('emErr').textContent = 'Enter a valid email address.'; return; }
+      if (!$('emPass').value.trim()) { $('emErr').textContent = 'Paste your app password.'; return; }
+      $('emErr').style.color = 'var(--muted)';
       $('emErr').textContent = 'Verifying…';
-      const res = await fetch('/auth/connect_email', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: $('emEmail').value.trim(), app_password: $('emPass').value }),
-      });
-      const d = await res.json().catch(() => ({}));
-      if (!res.ok) { $('emErr').textContent = errMsg(d); return; }
-      $('connectEmailBtn').innerHTML = icon('check') + 'Email connected';
-      $('emailPanel').style.display = 'none';
-      setStatus('Email connected — the “Email” button now sends automatically.');
+      $('emConnectBtn').disabled = true;
+      const payload = { email, app_password: $('emPass').value };
+      const host = $('emHost').value.trim(), port = parseInt($('emPort').value, 10);
+      if (host) payload.host = host;
+      if (port) payload.port = port;
+      try {
+        const res = await fetch('/auth/connect_email', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        const d = await res.json().catch(() => ({}));
+        if (!res.ok) { $('emErr').style.color = '#fca5a5'; $('emErr').textContent = errMsg(d); return; }
+        $('connectEmailBtn').innerHTML = icon('check') + 'Email connected';
+        $('emailPanel').style.display = 'none';
+        setStatus('Email connected — the “Email” button now sends automatically.');
+      } finally {
+        $('emConnectBtn').disabled = false;
+      }
     }
     function showAuth() { $('authPanel').style.display = 'flex'; }
     function showLogin(on) {
@@ -1425,6 +1549,8 @@
     });
     $('emailClose').addEventListener('click', () => { $('emailPanel').style.display = 'none'; });
     $('emConnectBtn').addEventListener('click', connectEmail);
+    $('emEmail').addEventListener('input', scheduleProviderLookup);
+    $('emPass').addEventListener('keydown', (e) => { if (e.key === 'Enter') connectEmail(); });
     $('toLogin').addEventListener('click', () => showLogin(true));
     $('toRegister').addEventListener('click', () => showLogin(false));
     $('skipAuth').addEventListener('click', skip);
@@ -1517,6 +1643,234 @@
     $('chatClose').addEventListener('click', () => { $('chatPanel').style.display = 'none'; });
     $('chatSend').addEventListener('click', sendChatReply);
     $('chatInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') sendChatReply(); });
+
+    // ---- Ask Scopio: a mini-ChatGPT over your leads & business ----
+    const aiHistory = [];   // [{role:'user'|'assistant', content}] — chat memory
+
+    function openAssistant() {
+      $('assistantPanel').style.display = 'flex';
+      paintIcons($('assistantPanel'));
+      if (!aiHistory.length && !$('aiLog').children.length) {
+        aiBubble('ai', "Hi! I'm your Scopio assistant. I can see the businesses on your screen — "
+          + 'ask me anything about them ("which restaurants have no website?", "who should I '
+          + 'contact first?"), request Excel exports, or get sales advice for your business.');
+      }
+      $('aiCmd').focus();
+    }
+
+    function aiBubble(who, text) {
+      const div = document.createElement('div');
+      div.className = 'bubble ' + (who === 'ai' ? 'ai' : 'them');
+      div.style.maxWidth = '85%';
+      div.textContent = text;
+      $('aiLog').appendChild(div);
+      $('aiLog').scrollTop = $('aiLog').scrollHeight;
+      return div;
+    }
+
+    function aiResultsBlock(d) {
+      // A results card under the assistant's bubble: clickable category chips that
+      // drill into ALL that category's businesses, each expandable to full details.
+      const wrap = document.createElement('div');
+      wrap.style.cssText = 'align-self:flex-start;max-width:100%;width:100%';
+
+      const meta = document.createElement('div');
+      meta.style.cssText = 'font-size:12.5px;color:var(--muted);margin-bottom:8px';
+      meta.textContent = `${d.total} match${d.total === 1 ? '' : 'es'}`
+        + (d.total ? ' — click a category to see the businesses:' : '');
+      wrap.appendChild(meta);
+
+      const drill = document.createElement('div');   // where a category's list renders
+
+      const cats = Object.entries(d.grouped).sort((a, b) => b[1] - a[1]);
+      if (cats.length) {
+        const chipBox = document.createElement('div');
+        chipBox.style.cssText = 'display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px';
+        cats.forEach(([cat, n]) => {
+          const chip = document.createElement('button');
+          chip.type = 'button';
+          chip.style.cssText = 'width:auto;margin:0;background:rgba(12,74,110,.35);'
+            + 'border:1px solid rgba(56,189,248,.3);border-radius:999px;padding:4px 12px;'
+            + 'font-size:12.5px;color:var(--text);cursor:pointer';
+          chip.textContent = `${cat} · ${n}`;
+          chip.addEventListener('click', () => {
+            [...chipBox.children].forEach((c) => { c.style.outline = 'none'; });
+            chip.style.outline = '2px solid var(--accent, #38bdf8)';
+            openCategory(d.intent, cat, n, drill);
+          });
+          chipBox.appendChild(chip);
+        });
+        wrap.appendChild(chipBox);
+      }
+
+      if (!d.total) {
+        const empty = document.createElement('div');
+        empty.style.cssText = 'color:var(--muted);font-size:13px';
+        empty.textContent = 'No businesses match that. Try a broader ask, or run ✨ Enrich first.';
+        wrap.appendChild(empty);
+      }
+      wrap.appendChild(drill);
+
+      if (d.total) {
+        const btn = document.createElement('button');
+        btn.className = 'ghost mini';
+        btn.style.cssText = 'width:auto;margin-top:10px';
+        btn.innerHTML = icon('link') + `Download all ${d.total} to `
+          + (d.intent.file_format === 'csv' ? 'CSV' : 'Excel');
+        btn.addEventListener('click', () => downloadAssistantFile(d.intent, btn));
+        wrap.appendChild(btn);
+        // Auto-open the biggest category so results are visible immediately.
+        if (cats.length) openCategory(d.intent, cats[0][0], cats[0][1], drill);
+      }
+
+      $('aiLog').appendChild(wrap);
+      $('aiLog').scrollTop = $('aiLog').scrollHeight;
+    }
+
+    function bizRow(b) {
+      // A business name that expands to its full details on click.
+      const row = document.createElement('div');
+      row.style.cssText = 'border-bottom:1px solid var(--line);padding:6px 0';
+      const head = document.createElement('div');
+      head.style.cssText = 'cursor:pointer;display:flex;justify-content:space-between;gap:8px;font-size:13px';
+      const tag = [b.phone && '📞', b.email && '✉️', !b.website && '🚫web'].filter(Boolean).join(' ');
+      head.innerHTML = `<span><b>${escapeHtml(b.name)}</b> <span style="color:var(--muted)">${escapeHtml(b.category || '')}</span></span>`
+        + `<span style="color:var(--muted);font-size:11.5px;white-space:nowrap">${tag}</span>`;
+      const det = document.createElement('div');
+      det.style.cssText = 'display:none;font-size:12.5px;color:var(--text);margin-top:6px;line-height:1.7';
+      const web = b.website ? `<a href="${escapeHtml(b.website.includes('://') ? b.website : 'https://' + b.website)}" target="_blank" rel="noopener">${escapeHtml(b.website)}</a>` : '<span style="color:var(--muted)">no website</span>';
+      det.innerHTML = [
+        b.address && `📍 ${escapeHtml(b.address)}`,
+        b.phone && `📞 ${escapeHtml(b.phone)}`,
+        b.email && `✉️ ${escapeHtml(b.email)}`,
+        `🌐 ${web}`,
+        b.description && `📝 ${escapeHtml(b.description)}`,
+        `🗺️ <a href="${escapeHtml(b.maps_link)}" target="_blank" rel="noopener">Open in Google Maps</a>`,
+      ].filter(Boolean).join('<br>');
+      head.addEventListener('click', () => {
+        det.style.display = det.style.display === 'none' ? 'block' : 'none';
+      });
+      row.appendChild(head);
+      row.appendChild(det);
+      return row;
+    }
+
+    async function openCategory(intent, category, total, drillEl) {
+      drillEl.innerHTML = `<div style="font-size:12px;color:var(--muted);margin:4px 0">Loading ${escapeHtml(category)}…</div>`;
+      const list = document.createElement('div');
+      list.style.cssText = 'max-height:320px;overflow-y:auto;border:1px solid var(--line);border-radius:10px;padding:8px 12px';
+      let offset = 0;
+      const PAGE = 50;
+      const loadMore = async () => {
+        try {
+          const res = await fetch('/assistant/category', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ intent, job_id: currentJobId, category, limit: PAGE, offset }),
+          });
+          const d = await res.json();
+          if (!res.ok) { drillEl.innerHTML = '<div style="color:var(--muted)">Could not load.</div>'; return; }
+          if (offset === 0) {
+            drillEl.innerHTML = '';
+            const title = document.createElement('div');
+            title.style.cssText = 'font-size:12.5px;font-weight:600;margin:2px 0 6px';
+            title.textContent = `${category} (${d.total})`;
+            drillEl.appendChild(title);
+            drillEl.appendChild(list);
+          }
+          d.items.forEach((b) => list.appendChild(bizRow(b)));
+          offset += d.items.length;
+          const old = drillEl.querySelector('.aiMore');
+          if (old) old.remove();
+          if (offset < d.total) {
+            const more = document.createElement('button');
+            more.className = 'ghost mini aiMore';
+            more.style.cssText = 'width:auto;margin-top:8px';
+            more.textContent = `Load more (${d.total - offset} left)`;
+            more.addEventListener('click', loadMore);
+            drillEl.appendChild(more);
+          }
+        } catch {
+          drillEl.innerHTML = '<div style="color:var(--muted)">Could not load.</div>';
+        }
+      };
+      await loadMore();
+    }
+
+    function aiSources(sources) {
+      if (!sources || !sources.length) return;
+      const div = document.createElement('div');
+      div.style.cssText = 'align-self:flex-start;max-width:85%;font-size:11.5px;color:var(--muted);margin-top:-2px';
+      div.innerHTML = '🌐 Sources: ' + sources.slice(0, 5).map((s) =>
+        `<a href="${escapeHtml(s.url)}" target="_blank" rel="noopener">${escapeHtml((s.title || s.url).slice(0, 40))}</a>`
+      ).join(' · ');
+      $('aiLog').appendChild(div);
+    }
+
+    async function runAssistant() {
+      const command = $('aiCmd').value.trim();
+      if (!command) return;
+      $('aiCmd').value = '';
+      aiBubble('them', command);
+      $('aiStatus').textContent = 'Thinking…';
+      $('aiRun').disabled = true;
+      try {
+        const res = await fetch('/assistant/command', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ command, job_id: currentJobId, history: aiHistory.slice(-10) }),
+        });
+        const d = await res.json();
+        if (!res.ok) { aiBubble('ai', errMsg(d)); return; }
+        aiBubble('ai', d.reply);
+        if (d.mode === 'query') aiResultsBlock(d);
+        else if (d.used_web) aiSources(d.sources);
+        // Chat memory: what was said + (for queries) what the data showed.
+        aiHistory.push({ role: 'user', content: command });
+        aiHistory.push({ role: 'assistant', content: d.mode === 'query'
+          ? `${d.reply} [showed ${d.total} matching businesses]` : d.reply });
+        if (aiHistory.length > 12) aiHistory.splice(0, aiHistory.length - 12);
+      } catch (e) {
+        aiBubble('ai', 'Something went wrong — is the server running?');
+      } finally {
+        $('aiStatus').textContent = '';
+        $('aiRun').disabled = false;
+        $('aiCmd').focus();
+      }
+    }
+
+    async function downloadAssistantFile(intent, btn) {
+      btn.disabled = true;
+      $('aiStatus').textContent = 'Building your file…';
+      try {
+        const res = await fetch('/assistant/export', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ intent, job_id: currentJobId }),
+        });
+        if (!res.ok) { $('aiStatus').textContent = 'Export failed.'; return; }
+        const disp = res.headers.get('Content-Disposition') || '';
+        const m = disp.match(/filename="([^"]+)"/);
+        const blob = await res.blob();
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = m ? m[1] : 'scopio-leads.xlsx';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(a.href);
+        $('aiStatus').textContent = 'Downloaded ✓';
+      } catch (e) {
+        $('aiStatus').textContent = 'Export failed.';
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    $('assistantToggle').addEventListener('click', openAssistant);
+    $('assistantClose').addEventListener('click', () => { $('assistantPanel').style.display = 'none'; });
+    $('assistantPanel').addEventListener('click', (e) => {
+      if (e.target.id === 'assistantPanel') $('assistantPanel').style.display = 'none';
+    });
+    $('aiRun').addEventListener('click', runAssistant);
+    $('aiCmd').addEventListener('keydown', (e) => { if (e.key === 'Enter') runAssistant(); });
     initAuth();
     $('remindersPanel').addEventListener('click', (e) => {
       if (e.target.id === 'remindersPanel') closeReminders();  // click backdrop to close

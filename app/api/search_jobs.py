@@ -17,7 +17,6 @@ from app.services.discovery.pipeline import upsert_businesses
 from app.services.enrichment.pipeline import count_candidates
 from app.services.importer.csv_import import import_csv
 from app.services.outreach.service import count_bulk_candidates, whatsapp_queue
-from app.services.targeting import derive_target_profile
 from app.workers.queue import enqueue_bulk_outreach, enqueue_discovery, enqueue_enrichment
 
 router = APIRouter(prefix="/search_jobs", tags=["search_jobs"])
@@ -38,13 +37,9 @@ async def create_search_job(
     # A human-friendly label for the GPS case (DB requires raw_address).
     raw_address = body.raw_address or f"📍 My location ({body.lat:.4f}, {body.lng:.4f})"
 
-    # Context-aware targeting: read the owner's services and decide which kinds of
-    # businesses to search for. Empty profile → broad search (today's behaviour).
-    tenant = (await db.execute(select(Tenant).where(Tenant.id == tenant_id))).scalar_one_or_none()
-    profile = await derive_target_profile(
-        tenant.services if tenant else "", tenant.company_name if tenant else None
-    )
-
+    # Context-aware targeting (LLM) is derived in the WORKER, not here — the click
+    # must return instantly. The worker fills job.target_profile before querying,
+    # and the UI's polling picks the chip up as soon as it lands.
     job = SearchJob(
         id=uuid.uuid4(),
         tenant_id=uuid.UUID(tenant_id),
@@ -54,7 +49,6 @@ async def create_search_job(
         center_lng=body.lng if has_gps else None,
         radius_m=body.radius_m,
         category=body.category,
-        target_profile=profile.to_dict() if not profile.is_empty else None,
         status="pending",
     )
     db.add(job)

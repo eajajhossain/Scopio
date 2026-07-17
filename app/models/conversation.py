@@ -27,6 +27,9 @@ class Conversation(Base):
     channel: Mapped[str] = mapped_column(String, nullable=False)
     status: Mapped[str] = mapped_column(conversation_status_enum, nullable=False, default="active")
     transcript: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
+    # Working-memory scratchpad: {"facts": [...]} — facts the agent learned in THIS
+    # conversation (survives the capped transcript window). See outreach/memory.py.
+    memory: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
     reminder_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("reminder.id")
     )

@@ -9,6 +9,7 @@ those categories) plus human-readable labels and Tavily seed keywords for the de
 Degrades gracefully: with no LLM key (or on any parse error) it returns an empty profile,
 which callers treat as "search everything" — exactly today's broad behaviour.
 """
+import hashlib
 import json
 import logging
 from dataclasses import dataclass, field
@@ -17,6 +18,11 @@ from app.core import llm
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
+
+# The same services text always maps to the same profile, so derive once and reuse —
+# searches after the first skip the LLM round-trip entirely (per process).
+_profile_cache: dict[str, dict] = {}
+_PROFILE_CACHE_MAX = 500
 
 # OSM tag keys we let the profiler target. These line up with the clauses Overpass
 # builds (see discovery/overpass.py). Values are matched as a regex alternation.
@@ -87,6 +93,9 @@ async def derive_target_profile(services: str, company: str | None = None) -> Ta
     services = (services or "").strip()
     if not services or not llm.llm_available():
         return TargetProfile()
+    cache_key = hashlib.sha256(f"{company or ''}\x00{services}".encode()).hexdigest()
+    if cache_key in _profile_cache:
+        return TargetProfile.from_dict(_profile_cache[cache_key])
     user = (
         f"Seller company: {company or 'a local B2B seller'}\n"
         f"What they offer / sell:\n{services}\n\n{_INSTRUCTIONS}"
@@ -106,6 +115,9 @@ async def derive_target_profile(services: str, company: str | None = None) -> Ta
             "target profile: types=%s filters=%s",
             profile.target_business_types, profile.osm_filters,
         )
+        if len(_profile_cache) >= _PROFILE_CACHE_MAX:   # simple bound, drop oldest
+            _profile_cache.pop(next(iter(_profile_cache)))
+        _profile_cache[cache_key] = profile.to_dict()
         return profile
     except Exception as exc:  # noqa: BLE001 — never let profiling block discovery
         logger.warning("target profiling failed, using broad search: %s", exc)

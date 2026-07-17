@@ -126,6 +126,11 @@ class Settings(BaseSettings):
     # Comma-separated emails granted the cross-tenant admin view. In dev, the demo
     # user is also treated as admin for convenience; in production only these emails.
     admin_emails: str = ""
+    # Bootstrap admin: if both are set, the app ensures this login exists on startup
+    # (created if missing; password kept in sync). This account is always an admin.
+    # Lives only in .env (gitignored) — the private source of truth for your login.
+    admin_email: str = ""
+    admin_password: str = ""
     # Privileged DB URL used ONLY by admin reads — connects as the superuser so it can
     # see every tenant's rows (bypasses RLS). Never exposed to normal requests.
     admin_database_url: str = "postgresql+asyncpg://scopio:scopio@localhost:5432/scopio"

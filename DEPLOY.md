@@ -61,14 +61,11 @@ SECRET_KEY=YmHmHTMqcU-gL5DB0wZ3PiQ2lEp-t6dOWqnQEBFdApv6yosh5JMM2I9YWQt8crEM
 POSTGRES_PASSWORD=oj7QEfdZ4iBFz2KSsxiJShcL8vtAseJh
 GROQ_API_KEY=<your gsk_… key>
 TAVILY_API_KEY=<your tvly-… key>
-ADMIN_EMAILS=eajajhossain890@gmail.com
-CORS_ORIGINS=https://<your-demo-domain>      # or http://<PUBLIC_IP>:8000 for IP-only
-```
+
 
 > `docker-compose.prod.yml` requires `SECRET_KEY` and `POSTGRES_PASSWORD` and will
 > refuse to start without them. The `app_rls` role password stays fixed (it's a
-> limited role and the DB port is never published in prod), and the admin dashboard's
-> `ADMIN_DATABASE_URL` is derived from `POSTGRES_PASSWORD` automatically.
+
 
 ## 4. Launch
 

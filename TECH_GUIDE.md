@@ -111,30 +111,39 @@ the single-page dashboard at `/` last so it doesn't shadow the API.
   `make_token`/`parse_token` (HMAC-signed token — integrity, not encryption).
 
 ### `app/api/` — HTTP routes (thin controllers, delegate to services)
-- **`auth.py`** — register/login/me/profile/connect_email. Login records `last_login_at`;
-  responses carry `is_admin`. `connect_email` validates SMTP creds (strips app-password spaces).
-- **`search_jobs.py`** — create a search (accepts address **or** GPS lat/lng; derives the
-  target profile), list businesses, CSV/extension import, trigger enrich, trigger bulk outreach,
-  WhatsApp queue.
+- **`auth.py`** — register/login/me/profile/connect_email + **`GET /email_provider`**. Login
+  records `last_login_at` and **rejects suspended accounts**; responses carry `is_admin`.
+  `connect_email` **auto-derives SMTP host/port from the email's provider** (see
+  `services/outreach/email_providers.py`), strips app-password spaces, gives provider-aware errors.
+- **`search_jobs.py`** — create a search (accepts address **or** GPS lat/lng), list businesses,
+  CSV/extension import, trigger enrich, trigger bulk outreach, WhatsApp queue. (Target profile is
+  now derived in the **worker**, not here, so the click returns instantly.)
+- **`assistant.py`** — **Ask Scopio** (agentic mini-chatbot). `POST /assistant/command`
+  (LLM plans → query leads or answer from DB + web tool), `/assistant/category` (drill into one
+  category's businesses), `/assistant/export` (whole result set → `.xlsx`/`.csv` with clickable
+  Google Maps links).
 - **`businesses.py`** — get / patch / soft-delete a business.
 - **`reminders.py`** — CRUD + `GET /{id}/invite.ics`.
 - **`outreach.py`** — `/start`, `/send/{id}`, `/contact_link/{id}`, conversations,
   **`/poll_inbox`** (trigger the autonomous email check).
 - **`analytics.py`** — the funnel metrics (`GET /analytics`), RLS-scoped.
-- **`admin.py`** — owner-only cross-tenant dashboard (`/overview`, `/users`, `/searches`),
-  gated by `require_admin`, reading via the privileged `admin_session`.
+- **`admin.py`** — owner-only cross-tenant dashboard (`/overview`, `/users`, `/searches`) **plus
+  control actions** (`POST /users/{id}/suspend` · `/reactivate`), gated by `require_admin`, reading
+  via the privileged `admin_session`. Admin accounts are shielded from suspension (`can_moderate`).
 
 ### `app/models/` — SQLAlchemy tables
-`tenant` (account + SMTP creds + tz), `user` (`app_user`; role, `last_login_at`, `login_count`),
+`tenant` (account + SMTP creds + tz), `user` (`app_user`; role, `last_login_at`, `login_count`,
+`suspended_at` — set by an admin to block login),
 `search_job` (status machine + `target_profile` JSONB + center lat/lng), `business` (the lead;
 `dedup_key`, `details` JSONB, `status`, `enriched_at`, soft-delete), `search_job_business`
 (many-to-many link), `conversation` (JSONB `transcript`, `reminder_id`), `reminder` (due_at,
 meeting URL), `area_cache` (cross-tenant OSM cache).
 
 ### `app/schemas/` — Pydantic request/response DTOs
-`auth.py` (adds `is_admin`, `last_login_at`), `business.py` (computed `has_contact`,
-`whatsappable`, `phone_e164`, `enriched`…), `outreach.py`, `reminder.py`, `search_job.py`
-(adds optional `lat`/`lng` for GPS, exposes `target_profile`).
+`auth.py` (adds `is_admin`, `last_login_at`, `EmailProviderOut`; `services` accepts ~20k words),
+`business.py` (computed `has_contact`, `whatsappable`, `phone_e164`, `enriched`…), `assistant.py`
+(the Ask-Scopio intent + command/category/export DTOs), `outreach.py`, `reminder.py`,
+`search_job.py` (adds optional `lat`/`lng` for GPS, exposes `target_profile`).
 
 ### `app/services/targeting.py` — context-aware targeting (the brain that decides *who*)
 `derive_target_profile(services, company)` → `TargetProfile { target_business_types,
@@ -165,6 +174,14 @@ whitelist of OSM keys. Empty profile ⇒ broad search (never blocks discovery).
 - **`fetcher.py`** — `fetch_site_text` (homepage + /contact, HTML→text, 6000-char cap).
 - **`websearch.py`** — `find_website` (Brave/DuckDuckGo) + `is_business_site` denylist.
 
+### `app/services/assistant.py` — Ask Scopio (agentic retrieval + answering)
+The brain of the chat. `parse_command` (LLM plans → `AssistantIntent`: query vs. answer, filters,
+whether to web-search), `run_command_query` / `build_query` (matches the **precise** type from raw
+OSM tags, not just the broad bucket), `grouped_counts` + `list_by_category` (clickable drill-in),
+`answer_with_data` (retrieve DB rows → optional **Tavily** web tool → LLM synthesizes the answer),
+and `build_xlsx`/`build_csv` + `maps_link` (exports with clickable Google Maps links). Keyword
+fallback with no LLM.
+
 ### `app/services/outreach/` — the AI sales agent
 - **`agent.py`** — `generate_opening` (channel-aware, appends the **opt-out line** via
   `with_optout`) and `respond` (structured `{reply, intent, set_reminder, callback_days}`),
@@ -173,6 +190,8 @@ whitelist of OSM keys. Empty profile ⇒ broad search (never blocks discovery).
   `fallback_opening`.
 - **`channels.py`** — `ChannelAdapter` Protocol; `send_email`/`verify_smtp` (aiosmtplib),
   `whatsapp_link`, `mailto_link`. New channels (WhatsApp Cloud API, Twilio) slot in here.
+- **`email_providers.py`** — maps an email address → SMTP host/port + app-password guidance
+  (`detect`, `resolve`) so users connect their mailbox by typing just email + app password.
 - **`service.py`** — orchestration: `start_conversation`, `handle_reply` (the auto-reminder
   seam), `send_message`, `whatsapp_queue`, `bulk_outreach`.
 
@@ -210,7 +229,8 @@ is monkey-patched to attach the Bearer token.
   hardened overlay.
 - **`pyproject.toml`** — dependencies + ruff/pytest config.
 - **`scripts/smoke_discovery.py`** — a manual discovery smoke test.
-- **`tests/`** — 18 modules / 85 tests (pure-logic + stubbed-network).
+- **`tests/`** — 24 modules / 154 tests (pure-logic + stubbed-network), incl. Ask Scopio
+  (planning, DB-grounded answers, web-tool), email-provider detection, and admin moderation.
 
 ---
 
@@ -326,17 +346,22 @@ write-back either way — the agent is a **drop-in upgrade**, not a rewrite.
 - Every tenant-owned table has an RLS policy `USING (tenant_id = current_setting('app.tenant_id'))`;
   the app connects as the non-superuser **`app_rls`** with `FORCE ROW LEVEL SECURITY`, so
   isolation is enforced by Postgres.
-- The **admin dashboard** is the one deliberate exception: it reads through a **superuser**
-  connection (`admin_session`) that bypasses RLS, gated behind `require_admin` (email in
-  `ADMIN_EMAILS`). Every other route stays tenant-scoped.
+- The **admin dashboard** is the one deliberate exception: it reads (and writes control actions
+  like suspend/reactivate) through a **superuser** connection (`admin_session`) that bypasses RLS,
+  gated behind `require_admin` (email in `ADMIN_EMAILS`, or the bootstrap `ADMIN_EMAIL`). Admin
+  accounts can't be suspended. Every other route stays tenant-scoped.
+- **Bootstrap admin:** if `ADMIN_EMAIL` + `ADMIN_PASSWORD` are set, `main.py::_bootstrap_admin`
+  ensures that login exists on startup (created if missing; password re-synced, hashed) — so `.env`
+  is the private source of truth for the owner's account.
 
 ---
 
 ## 7. Running it
 ```bash
-cp .env.example .env      # add GROQ_API_KEY, TAVILY_API_KEY, ADMIN_EMAILS, SECRET_KEY
+cp .env.example .env      # add GROQ_API_KEY, TAVILY_API_KEY, ADMIN_EMAIL + ADMIN_PASSWORD, SECRET_KEY
 docker compose up --build # db + redis + api + worker + adminer
 ```
+(Full step-by-step setup + troubleshooting: see the Installation guide in `README.md`.)
 - Dashboard: http://localhost:8000  ·  API docs: http://localhost:8000/docs
 - DB browser (Adminer): http://localhost:8080  (PostgreSQL · server `db` · `scopio`/`scopio`)
 - Tests: `pip install -e ".[dev]" && pytest -q`

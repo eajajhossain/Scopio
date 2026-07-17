@@ -66,7 +66,12 @@ async def get_raw_db() -> AsyncIterator[AsyncSession]:
 # --- Admin (platform-owner) access ------------------------------------------
 
 def admin_email_set() -> set[str]:
-    return {e.strip().lower() for e in (settings.admin_emails or "").split(",") if e.strip()}
+    emails = {e.strip().lower() for e in (settings.admin_emails or "").split(",") if e.strip()}
+    # The bootstrap admin (ADMIN_EMAIL) is always an admin, even if it wasn't also
+    # listed in ADMIN_EMAILS — so one env var is enough to get the Admin dashboard.
+    if settings.admin_email.strip():
+        emails.add(settings.admin_email.strip().lower())
+    return emails
 
 
 def email_is_admin(email: str | None) -> bool:

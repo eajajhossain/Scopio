@@ -13,7 +13,7 @@ from app.models.conversation import Conversation
 from app.models.search_job_business import SearchJobBusiness
 from app.models.tenant import Tenant
 from app.models.user import AppUser
-from app.services.outreach import agent, drafts
+from app.services.outreach import agent, drafts, memory
 from app.services.outreach.channels import (
     contact_for_channel,
     get_channel,
@@ -82,7 +82,10 @@ async def start_conversation(
             detail=f"{biz.name} has no {channel} contact — enrich it first or pick another channel.",
         )
     ctx = await _sender_context(session, tenant_id, user_id)
-    opening = await agent.generate_opening(_business_info(biz), channel, ctx)
+    # Recall what we know about this lead (episodic + semantic memory) so a
+    # re-contact reads as a follow-up, not an amnesiac cold opening.
+    memory_brief = await memory.recall(session, biz)
+    opening = await agent.generate_opening(_business_info(biz), channel, ctx, memory_brief)
     await get_channel(channel).send(to, opening)  # preview/record
 
     conv = Conversation(
@@ -115,9 +118,14 @@ async def handle_reply(
     transcript.append({"role": "business", "text": business_message, "ts": _now()})
 
     ctx = await _sender_context(session, tenant_id, user_id)
-    result = await agent.respond(_business_info(biz), transcript, conv.channel, ctx)
+    memory_brief = await memory.recall(session, biz, conv)
+    result = await agent.respond(
+        _business_info(biz), transcript, conv.channel, ctx, memory_brief=memory_brief
+    )
     reply_text = result["reply"]
     intent = result["intent"]
+    # Persist what the agent learned this turn (working + semantic memory).
+    memory.remember(conv, biz, result.get("new_facts"))
 
     # The moment the owner agrees to a call, set a follow-up reminder (once) so the
     # AI remembers the date to call them — no calendar/meeting needed.

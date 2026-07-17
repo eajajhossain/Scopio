@@ -4,11 +4,14 @@ Every route is gated by `require_admin` and reads through the privileged `admin_
 (superuser → bypasses Row-Level Security), so it can see all tenants at once. Normal,
 tenant-scoped routes are unaffected.
 """
-from fastapi import APIRouter, Depends, Query
+import uuid
+from datetime import UTC, datetime
+
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import func, select
 
 from app.core.db import admin_session
-from app.core.deps import Identity, require_admin
+from app.core.deps import Identity, email_is_admin, require_admin
 from app.models.business import Business
 from app.models.conversation import Conversation
 from app.models.reminder import Reminder
@@ -17,6 +20,12 @@ from app.models.tenant import Tenant
 from app.models.user import AppUser
 
 router = APIRouter(prefix="/admin", tags=["admin"])
+
+
+def can_moderate(target_email: str | None) -> bool:
+    """An admin may moderate anyone EXCEPT another admin (incl. themselves) — this
+    stops an admin from locking the owner out of the admin dashboard."""
+    return not email_is_admin(target_email)
 
 
 @router.get("/overview")
@@ -48,8 +57,9 @@ async def users(_: Identity = Depends(require_admin)) -> dict:
         rows = (
             await db.execute(
                 select(
-                    AppUser.email, AppUser.full_name, AppUser.role,
+                    AppUser.id, AppUser.email, AppUser.full_name, AppUser.role,
                     AppUser.created_at, AppUser.last_login_at, AppUser.login_count,
+                    AppUser.suspended_at,
                     Tenant.company_name, func.coalesce(searches.c.n, 0).label("searches"),
                 )
                 .join(Tenant, Tenant.id == AppUser.tenant_id)
@@ -60,16 +70,47 @@ async def users(_: Identity = Depends(require_admin)) -> dict:
     return {
         "items": [
             {
-                "email": r.email, "name": r.full_name, "role": r.role,
+                "id": str(r.id), "email": r.email, "name": r.full_name, "role": r.role,
                 "company": r.company_name,
                 "joined": r.created_at.isoformat() if r.created_at else None,
                 "last_login": r.last_login_at.isoformat() if r.last_login_at else None,
                 "login_count": r.login_count, "searches": r.searches,
+                "suspended": r.suspended_at is not None,
+                # an admin account can't be moderated — the UI hides its buttons
+                "can_moderate": can_moderate(r.email),
             }
             for r in rows
         ],
         "total": len(rows),
     }
+
+
+async def _set_suspended(user_id: uuid.UUID, suspend: bool) -> dict:
+    """Suspend (block login) or reactivate an account. Admin accounts are protected."""
+    async with admin_session() as db:
+        user = (
+            await db.execute(select(AppUser).where(AppUser.id == user_id))
+        ).scalar_one_or_none()
+        if user is None:
+            raise HTTPException(status_code=404, detail="user not found")
+        if suspend and not can_moderate(user.email):
+            raise HTTPException(status_code=400, detail="Admin accounts can't be suspended.")
+        user.suspended_at = datetime.now(UTC) if suspend else None
+        await db.commit()
+        return {"id": str(user.id), "email": user.email,
+                "suspended": user.suspended_at is not None}
+
+
+@router.post("/users/{user_id}/suspend")
+async def suspend_user(user_id: uuid.UUID, _: Identity = Depends(require_admin)) -> dict:
+    """Block an account from logging in (reversible)."""
+    return await _set_suspended(user_id, True)
+
+
+@router.post("/users/{user_id}/reactivate")
+async def reactivate_user(user_id: uuid.UUID, _: Identity = Depends(require_admin)) -> dict:
+    """Lift a suspension — the account can log in again."""
+    return await _set_suspended(user_id, False)
 
 
 @router.get("/searches")

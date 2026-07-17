@@ -39,6 +39,112 @@ the sales conversation to capture the callback.
 
 ---
 
+## 📦 Installation guide
+
+A complete, step-by-step setup. The Docker path is the easiest — one command brings up the
+whole stack (database, queue, API, background worker). Everything works with **zero API keys**
+to start; add keys later to unlock the AI features.
+
+### 1. Prerequisites
+
+| Tool | Why | Get it |
+|---|---|---|
+| **Docker Desktop** | Runs Postgres + Redis + the app in one command | https://www.docker.com/products/docker-desktop/ |
+| **Git** | To clone the project | https://git-scm.com/downloads |
+
+That's all you need for the recommended (Docker) path. Make sure **Docker Desktop is running**
+(its whale icon in the tray/menubar) before you start — `docker version` should print without error.
+
+> Windows note: Docker Desktop needs WSL 2. If `docker compose` says it can't reach the daemon,
+> open the Docker Desktop app first and wait ~30s for the engine to start.
+
+### 2. Get the code
+
+```bash
+git clone https://github.com/eajajhossain/Scopio.git
+cd Scopio
+```
+
+### 3. Create your `.env`
+
+```bash
+cp .env.example .env
+```
+
+Open `.env` in any editor. **You can leave everything blank and it still runs** — but here's
+what to fill in for the full experience:
+
+| Variable | Needed for | Where to get it (all free) |
+|---|---|---|
+| `GROQ_API_KEY` | The AI brain (Ask Scopio, targeting, outreach, enrichment) | https://console.groq.com/keys |
+| `TAVILY_API_KEY` | Deep web research + Ask Scopio's web tool | https://tavily.com |
+| `GEOAPIFY_API_KEY` | Optional 2nd business-discovery source | https://myprojects.geoapify.com |
+| `BRAVE_API_KEY` | Optional: find missing business websites | https://brave.com/search/api |
+| `ANTHROPIC_API_KEY` | Optional paid upgrade (higher-accuracy enrichment) | https://console.anthropic.com |
+| `ADMIN_EMAIL` + `ADMIN_PASSWORD` | Your **admin login** (see step 5) | you choose these |
+| `SECRET_KEY` | Signing key — **required for production** | `python -c "import secrets; print(secrets.token_urlsafe(48))"` |
+
+`.env` is **gitignored** — your keys and admin password never get committed or published.
+
+### 4. Start it
+
+```bash
+docker compose up --build
+```
+
+First build takes a few minutes (it installs dependencies). It starts four services:
+
+| Service | What | URL |
+|---|---|---|
+| **api** | The app + dashboard | http://localhost:8000/ |
+| **worker** | Background jobs (discovery, enrichment, outreach) | — |
+| **db** | PostgreSQL (schema auto-loaded from `db/init.sql`) | localhost:5432 |
+| **redis** | Job queue | localhost:6379 |
+| **adminer** | Browse the database (dev only) | http://localhost:8080 |
+
+To run it in the background instead: `docker compose up --build -d`. To stop: `docker compose down`.
+
+
+### 6. Verify it works
+
+- Open **http://localhost:8000/** — you should see the dashboard.
+- Health check: **http://localhost:8000/health** → `{"status":"ok"}`
+- API docs (all endpoints): **http://localhost:8000/docs**
+- Enter an address (e.g. `Barasat, 700125`) → **Find businesses** → real businesses appear on the map.
+
+### Running without Docker (advanced)
+
+You'll need Python 3.11+, a running PostgreSQL, and Redis yourself. Then:
+
+```bash
+pip install -e ".[dev]"
+# create the DB and load the schema:
+psql "$DATABASE_URL" -f db/init.sql
+# set DATABASE_URL / REDIS_URL (and any keys) in your environment, then:
+uvicorn app.main:app --reload            # API + dashboard
+arq app.workers.discovery_worker.WorkerSettings   # in a second terminal: the worker
+```
+
+### Running the tests
+
+```bash
+pip install -e ".[dev]"
+pytest                      # pure-logic tests need no database or keys
+```
+
+### Troubleshooting
+
+| Symptom | Fix |
+|---|---|
+| `failed to connect to the docker API` / daemon errors | Docker Desktop isn't running — open the app, wait ~30s, retry. |
+| `port is already allocated` (5432/6379/8000) | Another Postgres/Redis/app is using that port — stop it, or change the port mapping in `docker-compose.yml`. |
+| Search is slow the first time in a new area | Normal — it's the free public OpenStreetMap API. Repeat searches of the same area are cached and instant. |
+| AI features do nothing / "assistant" gives basic answers | No `GROQ_API_KEY` set — add one (free) to `.env` and restart. |
+| "Couldn't connect to your email" | Use an **app password** from your provider, not your normal password (the Connect-email panel links you straight to the right page). |
+
+
+---
+
 ## Phase 1 — Discovery (what's built)
 
 Address (or 📍 GPS location) in → list of real businesses out, using **free OpenStreetMap data**
@@ -54,13 +160,16 @@ falls back to the broad "all businesses" search.
 **Stack:** FastAPI · PostgreSQL · Redis · ARQ worker · SQLAlchemy 2 (async) · phonenumbers
 (international phone/WhatsApp normalization) · Leaflet (interactive map).
 
-### Run it (Docker — recommended)
+### Self-hosting — run your own copy
 
-```bash
-docker compose up --build
-```
+Scopio is open source: clone it, add **your own** API keys, and run it on your own machine or
+server (full steps in the [Installation guide](#-installation-guide) above). Each deployment is
+**fully independent** — its data, users, and keys live only on the machine it runs on. There is
+no phone-home and no shared backend; the project maintainer has no access to your instance, and
+you have none to anyone else's.
 
-This starts Postgres (schema auto-loaded from `db/init.sql`), Redis, the API, and the worker.
+### The dashboard (once it's running with `docker compose up`)
+
 - **Dashboard: http://localhost:8000/** — enter an address, watch the job run, see businesses on an
   interactive map + list, and upload a CSV. (No build step; served by the API.)
   - The map opens on a **slowly spinning Earth** and plays a **cinematic fly-in** to your location
@@ -150,10 +259,32 @@ GROQ_API_KEY=gsk_...        # free; or ANTHROPIC_API_KEY=sk-ant-... ; or neither
 docker compose up -d
 ```
 
+## Ask Scopio — the agentic assistant over your leads
+
+A built-in mini-chatbot (**✨ Ask AI**, top-right) that answers **any** question about the
+businesses you've discovered. The LLM is the **brain, not the answer source**: for each message it
+*plans* what to do, pulls the answer from **your database** of found businesses, and — when the
+database isn't enough — **calls the web tool (Tavily)** to fetch a satisfying answer. It never
+makes up business data.
+
+- **Ask anything:** *"which restaurants here have no website?"*, *"who should I contact first?"*,
+  *"does Cafe Roma have good reviews?"* (that one triggers a web search), *"how should I pitch the
+  salons?"* — grounded in both your business context and the real leads on screen.
+- **List & filter:** *"give me only the cafes without a website"* → matches the precise business
+  type (from the raw OSM tags, not just the broad category), grouped into **clickable categories**
+  you expand to see every business + its full details.
+- **Export to Excel/CSV:** *"make an Excel with phone, email and a Google Maps link"* → a real
+  `.xlsx` with **clickable Google Maps links** per business, covering the **whole** result set.
+- **Chat memory + web citations:** follow-ups resolve against prior turns, and web-sourced answers
+  show their source links. Endpoints: `POST /assistant/command` · `/assistant/category` ·
+  `/assistant/export`. Falls back to a keyword parser with no LLM key; the web step is skipped
+  without a Tavily key.
+
 ## Accounts & onboarding
 
 Scopio is multi-user: each person registers, says **what their business offers**, and the AI
-reaches out **as them**.
+reaches out **as them**. (Business details accept up to ~20,000 words, so you can paste a full
+company profile for richer targeting and outreach.)
 
 - `POST /auth/register` (name, company, services, email, password) → creates an isolated tenant +
   user, returns a signed token. `POST /auth/login`, `GET /auth/me`, `PATCH /auth/profile`.
@@ -166,13 +297,27 @@ reaches out **as them**.
 
 ### Admin dashboard (platform owner)
 
-Accounts whose email is listed in **`ADMIN_EMAILS`** see an **Admin** button that opens a
-cross-tenant dashboard: totals (accounts, users, businesses, searches, conversations, reminders),
-**all users** (with last-login + login count + searches), and **all searches** (who searched, the
-location, what was targeted, and results) — across every account. It reads through a privileged
-connection that bypasses Row-Level Security (`app/api/admin.py`), so it's the one place isolation is
-intentionally lifted; every other route stays strictly tenant-scoped. (For a raw view of the whole
-database there's also **Adminer** at `http://localhost:8080` in dev.)
+The admin sees an **Admin** button that opens a cross-tenant dashboard: totals (accounts, users,
+businesses, searches, conversations, reminders), **all users** (with last-login + login count +
+searches), and **all searches** (who searched, where, what was targeted, results) — across every
+account. It reads through a privileged connection that bypasses Row-Level Security
+(`app/api/admin.py`), so it's the one place isolation is intentionally lifted; every other route
+stays strictly tenant-scoped. (For a raw DB view there's also **Adminer** at `http://localhost:8080`
+in dev.)
+
+**Real control, not just visibility:** the admin can **suspend or reactivate any account** — a
+suspended user is instantly blocked from logging in (`POST /admin/users/{id}/suspend` ·
+`/reactivate`), with per-user buttons in the dashboard. Admin accounts are protected: they can't be
+suspended, so the owner can never be locked out.
+
+**Two ways to become the admin of your deployment:**
+- **Bootstrap login (easiest):** set `ADMIN_EMAIL` + `ADMIN_PASSWORD` in `.env`. On startup the app
+  creates that account (if missing) and keeps its password in sync — those two lines *are* your
+  admin login, private to your machine (`.env` is gitignored; the password is hashed in the DB).
+- **Allow-list:** register normally in the app, then add that email to **`ADMIN_EMAILS`**
+  (comma-separated). Either way, that account gets the Admin button.
+
+Each person who self-hosts sets their *own* admin credentials for *their own* copy.
 
 ## Outreach — the AI sales agent
 
@@ -219,7 +364,7 @@ adapter seam — because personal WhatsApp has no inbound API.)
 
 | Channel | Behaviour | Automatic? |
 |---|---|---|
-| **Email** | When the account connects its email (Gmail app password → SMTP, top-right), Scopio **really sends** the message via `aiosmtplib`. | ✅ Fully auto-sent |
+| **Email** | Connect your mailbox once (top-right) — Scopio **auto-detects your provider** (Gmail, Outlook, Yahoo, iCloud, Zoho…) and fills in the SMTP settings; you just paste an **app password** (a one-click link takes you to the right page). Then it **really sends** via `aiosmtplib`. | ✅ Fully auto-sent |
 | **WhatsApp** | A `wa.me` **tap-to-send** link with the message pre-filled. Personal WhatsApp **cannot** be auto-sent (WhatsApp ToS / no free API), so you tap *Send* — the **WhatsApp Queue** lines them all up for fast one-tap blasting. | ❌ Drafted (one tap) |
 | **SMS / Voice** | Not wired — needs your own Twilio / provider accounts; plug into the same `ChannelAdapter` interface. | — |
 

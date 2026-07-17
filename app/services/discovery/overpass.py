@@ -108,7 +108,10 @@ class OverpassClient:
         urls: list[str] | None = None,
         user_agent: str | None = None,
         max_retries: int = 2,
-        timeout: float = 90.0,
+        # The query itself is capped server-side at 25s ([timeout:25] in the QL), so a
+        # healthy mirror answers well within this; a hung one fails over quickly
+        # instead of burning 90s before the next mirror gets a chance.
+        timeout: float = 35.0,
     ):
         # Honor a configured primary endpoint, then fall back to public mirrors.
         configured = (settings.overpass_url or "").strip()

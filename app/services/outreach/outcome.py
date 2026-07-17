@@ -7,17 +7,20 @@ Used by BOTH delivery paths so they never drift:
 import logging
 from zoneinfo import ZoneInfo
 
+from app.services.outreach import memory
 from app.services.reminders.service import create_reminder, due_in_days, tenant_tz
 
 logger = logging.getLogger(__name__)
 
 
 async def apply_reply_outcome(session, tenant_id: str, conv, biz, result: dict) -> str:
-    """Apply the agent's structured result (intent / set_reminder / callback_days)
-    to the conversation + business, creating the follow-up reminder when the owner
-    agreed to a call. Returns extra text to append to the outgoing reply (the
-    scheduling confirmation + meeting link), or "". Does NOT commit.
+    """Apply the agent's structured result (intent / set_reminder / callback_days /
+    new_facts) to the conversation + business, creating the follow-up reminder when
+    the owner agreed to a call. Returns extra text to append to the outgoing reply
+    (the scheduling confirmation + meeting link), or "". Does NOT commit.
     """
+    # Persist what the agent learned this turn (working + semantic memory).
+    memory.remember(conv, biz, result.get("new_facts"))
     intent = result.get("intent")
     if result.get("set_reminder") and conv.reminder_id is None:
         tz_name = await tenant_tz(session, tenant_id)

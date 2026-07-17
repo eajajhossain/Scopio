@@ -17,7 +17,7 @@ from app.models.business import Business
 from app.models.conversation import Conversation
 from app.models.tenant import Tenant
 from app.services.inbox.imap_client import InboundEmail, fetch_unseen
-from app.services.outreach import agent, drafts
+from app.services.outreach import agent, drafts, memory
 from app.services.outreach.channels import send_email
 from app.services.outreach.outcome import apply_reply_outcome
 from app.services.outreach.service import _business_info, _now, _sender_context
@@ -116,7 +116,10 @@ async def _process(session, tenant, ctx, msg: InboundEmail) -> bool:
         return False
 
     transcript.append({"role": "business", "text": msg.body, "ts": _now()})
-    result = await agent.respond(_business_info(biz), transcript, "email", ctx)
+    memory_brief = await memory.recall(session, biz, conv)
+    result = await agent.respond(
+        _business_info(biz), transcript, "email", ctx, memory_brief=memory_brief
+    )
     reply_text = result["reply"]
     intent = result["intent"]
 
